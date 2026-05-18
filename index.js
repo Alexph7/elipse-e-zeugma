@@ -18,6 +18,8 @@ const bot = new TelegramBot(TOKEN, {
 
 const ARQUIVO_SENTINELAS = "./sentinelas.json";
 
+let sentinelas = [];
+
 // ======================================================
 // CONFIG MONITORAMENTO
 // ======================================================
@@ -280,9 +282,6 @@ async function monitorar(execucaoNome) {
     monitorandoAgora = true;
 
     try {
-
-        const sentinelas =
-            carregarSentinelas();
 
         if (!sentinelas.length) {
 
@@ -559,6 +558,8 @@ bot.on("message", async (msg) => {
     }
 
     salvarSentinelas(links);
+    
+    sentinelas = links;
 
     aguardandoLinks = false;
 
@@ -643,6 +644,8 @@ setInterval(() => {
 // ======================================================
 // START
 // ======================================================
+
+sentinelas = carregarSentinelas();
 
 console.log("==================================");
 console.log(" BOT SENTINELAS INICIADO ");

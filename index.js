@@ -180,52 +180,67 @@ function extrairCupons(html) {
     const encontrados = [];
 
     // ==================================================
-    // VALOR FIXO
+    // PROMOTION IDS
     // ==================================================
 
-    const regexValorFixo =
-        /Economize\s+R\$(\d+)\s+em\s+pedidos\s+R\$(\d+)\+\s+cupom:\s*([A-Z0-9]+)/gi;
+    const regexPromotion =
+        /promotion\/details\/popup\/([A-Z0-9]+)/gi;
 
-    let match;
+    let promotionMatch;
 
     while (
-        (match = regexValorFixo.exec(html)) !== null
+        (promotionMatch = regexPromotion.exec(html)) !== null
     ) {
 
         encontrados.push({
 
-            tipo: "valor_fixo",
+            tipo: "promotion",
 
-            desconto: match[1],
-
-            minimo: match[2],
-
-            codigo: match[3]
+            id: promotionMatch[1]
         });
     }
 
     // ==================================================
-    // PORCENTAGEM
-    // ESQUELETO
-    // EVOLUIR DEPOIS
+    // TERMOS COMPLETOS
     // ==================================================
 
-    const regexPorcentagem =
-        /Ganhe\s+(\d+)%\s+off\s+em\s+compras\s+a\s+partir\s+de\s+R\$\s*([\d.,]+).*?Cupom\s+de\s+desconto:\s*([A-Z0-9]+)/gis;
+    let match;
+
+    const regexTermos =
+        /Ganhe\s+(?:(\d+)%|R\$\s*([\d.,\u00A0]+))\s+off\s+em\s+compras\s+a\s+partir\s+de\s+R\$\s*([\d.,\u00A0]+)(?:\s+\(limitado\s+a\s+R\$\s*([\d.,\u00A0]+)\))?.*?Cupom\s+de\s+desconto:\s*<groupClaimCode>([A-Z0-9]+)<\/groupClaimCode>/gis;
+
+    const regexCodigoFallback =
+        /Cupom\s+de\s+desconto:\s*([A-Z0-9]+)/gi;
 
     while (
-        (match = regexPorcentagem.exec(html)) !== null
+        (match = regexTermos.exec(html)) !== null
     ) {
 
         encontrados.push({
 
-            tipo: "porcentagem",
+            tipo: "cupomCompleto",
 
-            desconto: match[1],
+            porcentagem: match[1] || null,
 
-            minimo: match[2],
+            valorReais: match[2] || null,
 
-            codigo: match[3]
+            minimo: match[3],
+
+            limite: match[4] || null,
+
+            codigo: match[5]
+        });
+    }
+
+    while (
+        (match = regexCodigoFallback.exec(html)) !== null
+    ) {
+
+        encontrados.push({
+
+            tipo: "codigoFallback",
+
+            codigo: match[1]
         });
     }
 
@@ -267,8 +282,92 @@ async function analisarProduto(url) {
 
         const html = response.data;
 
-        const cupons =
+        // ==========================================
+        // extrai ids promotion
+        // ==========================================
+
+        const encontrados =
             extrairCupons(html);
+
+        const promotions =
+            encontrados.filter(
+                x => x.tipo === "promotion"
+            );
+
+        const promotionsVistas =
+            new Set();
+
+        // cupons finais
+        const cupons = [];
+
+        // ==========================================
+        // abre popup termos
+        // ==========================================
+
+        for (const promo of promotions) {
+
+
+            if (promotionsVistas.has(promo.id)) {
+                continue;
+            }
+
+            promotionsVistas.add(promo.id);
+            try {
+
+                const popup =
+                    await axios.get(
+
+                        `https://www.amazon.com.br/promotion/details/popup/${promo.id}`,
+
+                        {
+
+                            httpAgent,
+                            httpsAgent,
+
+                            timeout: REQUEST_TIMEOUT,
+
+                            headers: {
+
+                                "user-agent":
+                                    "Mozilla/5.0",
+
+                                "accept-language":
+                                    "pt-BR,pt;q=0.9",
+
+                                "accept-encoding":
+                                    "gzip, deflate, br"
+                            }
+                        }
+                    );
+
+                // html popup
+                const popupHtml =
+                    popup.data;
+
+                // extrai cupons completos
+                const extras =
+                    extrairCupons(
+                        popupHtml
+                    );
+
+                // mantém apenas cupons reais
+                cupons.push(
+
+                    ...extras.filter(
+                        x =>
+                            x.tipo === "cupomCompleto" ||
+                            x.tipo === "codigoFallback"
+                    )
+                );
+
+            } catch (err) {
+
+                console.log(
+                    "Erro popup:",
+                    promo.id
+                );
+            }
+        }
 
         return cupons;
 
@@ -336,6 +435,10 @@ async function monitorar(execucaoNome) {
 
             for (const item of lista) {
 
+                if (!item.codigo) {
+                    continue;
+                }
+
                 const chave =
                     item.codigo;
 
@@ -398,34 +501,34 @@ async function monitorar(execucaoNome) {
             // VALOR FIXO
             // --------------------------------------
 
-            if (
-                item.tipo === "valor_fixo"
-            ) {
+            if (item.tipo === "cupomCompleto") {
+
+                if (item.porcentagem) {
+
+                    mensagem =
+                        `<b>CUPOM AMAZON</b>
+
+🔥 ${item.porcentagem}% OFF
+🛒 Acima de R$${item.minimo}
+🔑 <code>${item.codigo}</code>`;
+
+                } else {
+
+                    mensagem =
+                        `<b>CUPOM AMAZON</b>
+
+💰 R$${item.valorReais} OFF
+🛒 Acima de R$${item.minimo}
+🔑 <code>${item.codigo}</code>`;
+                }
+
+            } else if (item.tipo === "codigoFallback") {
 
                 mensagem =
                     `<b>CUPOM AMAZON</b>
 
-💰 R$${item.desconto} OFF
-🛒 Acima de R$${item.minimo}
 🔑 <code>${item.codigo}</code>`;
             }
-
-            // --------------------------------------
-            // PORCENTAGEM
-            // --------------------------------------
-
-            else if (
-                item.tipo === "porcentagem"
-            ) {
-
-                mensagem =
-                    `<b>CUPOM AMAZON</b>
-
-🔥 ${item.desconto}% OFF
-🛒 Acima de R$${item.minimo}
-🔑 <code>${item.codigo}</code>`;
-            }
-
             // ======================================
             // envia telegram
             // ======================================

@@ -3,6 +3,8 @@ require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 const axios = require("axios");
 const fs = require("fs");
+const http = require("http");
+const https = require("https");
 const moment = require("moment-timezone");
 
 // ======================================================
@@ -17,6 +19,16 @@ const bot = new TelegramBot(TOKEN, {
 });
 
 const ARQUIVO_SENTINELAS = "./sentinelas.json";
+
+const httpAgent = new http.Agent({
+    keepAlive: true,
+    maxSockets: 20
+});
+
+const httpsAgent = new https.Agent({
+    keepAlive: true,
+    maxSockets: 20
+});
 
 let sentinelas = [];
 
@@ -86,10 +98,6 @@ function obterModoAtual() {
 
     const minuto = Number(
         agora.format("m")
-    );
-
-    const segundo = Number(
-        agora.format("s")
     );
 
     // --------------------------------
@@ -234,6 +242,9 @@ async function analisarProduto(url) {
 
         const response = await axios.get(url, {
 
+            httpAgent,
+            httpsAgent,
+
             timeout: REQUEST_TIMEOUT,
 
             headers: {
@@ -242,7 +253,10 @@ async function analisarProduto(url) {
                     "Mozilla/5.0",
 
                 "accept-language":
-                    "pt-BR,pt;q=0.9"
+                    "pt-BR,pt;q=0.9",
+
+                "accept-encoding":
+                    "gzip, deflate, br"
             }
         });
 
@@ -558,7 +572,7 @@ bot.on("message", async (msg) => {
     }
 
     salvarSentinelas(links);
-    
+
     sentinelas = links;
 
     aguardandoLinks = false;

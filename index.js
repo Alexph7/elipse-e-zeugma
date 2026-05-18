@@ -211,7 +211,7 @@ function extrairCupons(html) {
     // ==================================================
 
     const regexPorcentagem =
-        /REGEX_AQUI_DEPOIS/gi;
+        /Ganhe\s+(\d+)%\s+off\s+em\s+compras\s+a\s+partir\s+de\s+R\$\s*([\d.,]+).*?Cupom\s+de\s+desconto:\s*([A-Z0-9]+)/gis;
 
     while (
         (match = regexPorcentagem.exec(html)) !== null

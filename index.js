@@ -269,7 +269,7 @@ function extrairCupons(html) {
 // REQUEST PRODUTO
 // ======================================================
 
-async function analisarProduto(url) {
+async function analisarProduto(url, cachePromotions) {
 
     try {
 
@@ -333,41 +333,47 @@ async function analisarProduto(url) {
             promotionsVistas.add(promo.id);
             try {
 
-                const popup =
-                    await axios.get(
+                let extras = cachePromotions.get(promo.id);
 
-                        `https://www.amazon.com.br/promotion/details/popup/${promo.id}`,
+                if (extras === undefined) {
 
-                        {
+                    const popup =
+                        await axios.get(
 
-                            httpAgent,
-                            httpsAgent,
+                            `https://www.amazon.com.br/promotion/details/popup/${promo.id}`,
 
-                            timeout: REQUEST_TIMEOUT,
+                            {
 
-                            headers: {
+                                httpAgent,
+                                httpsAgent,
 
-                                "user-agent":
-                                    "Mozilla/5.0",
+                                timeout: REQUEST_TIMEOUT,
 
-                                "accept-language":
-                                    "pt-BR,pt;q=0.9",
+                                headers: {
 
-                                "accept-encoding":
-                                    "gzip, deflate, br"
+                                    "user-agent":
+                                        "Mozilla/5.0",
+
+                                    "accept-language":
+                                        "pt-BR,pt;q=0.9",
+
+                                    "accept-encoding":
+                                        "gzip, deflate, br"
+                                }
                             }
-                        }
-                    );
+                        );
 
-                // html popup
-                const popupHtml =
-                    popup.data;
+                    extras =
+                        extrairCupons(
+                            popup.data
+                        );
 
-                // extrai cupons completos
-                const extras =
-                    extrairCupons(
-                        popupHtml
+                    // salva no cache
+                    cachePromotions.set(
+                        promo.id,
+                        extras
                     );
+                }
 
                 // mantém apenas cupons reais
                 cupons.push(
@@ -378,7 +384,6 @@ async function analisarProduto(url) {
                             x.tipo === "codigoFallback"
                     )
                 );
-
             } catch (err) {
 
                 console.log(
@@ -415,6 +420,8 @@ async function monitorar(execucaoNome) {
 
     try {
 
+        const cachePromotions = new Map();
+
         if (!sentinelas.length) {
 
             console.log(
@@ -436,7 +443,7 @@ async function monitorar(execucaoNome) {
             await Promise.all(
 
                 sentinelas.map(
-                    url => analisarProduto(url)
+                    url => analisarProduto(url, cachePromotions)
                 )
             );
 

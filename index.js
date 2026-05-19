@@ -88,6 +88,24 @@ function carregarSentinelas() {
     );
 }
 
+function extrairBlocosPromocao(html) {
+
+    // pega apenas blocos que contenham promotion popup
+    // reduz MUITO o html processado
+
+    const matches = html.match(
+
+        /<div[^>]*>[\s\S]*?promotion\/details\/popup\/[A-Z0-9]+[\s\S]*?<\/div>/gi
+
+    );
+
+    if (!matches) {
+        return "";
+    }
+
+    return matches.join("\n");
+}
+
 // ======================================================
 // JANELA DE MONITORAMENTO
 // ======================================================
@@ -275,12 +293,13 @@ async function analisarProduto(url) {
             }
         });
 
-        // IMPORTANTISSIMO:
-        // usa html
-        // extrai
-        // joga fora
 
-        const html = response.data;
+        let htmlBruto = response.data;
+
+        const html =
+            extrairBlocosPromocao(htmlBruto);
+
+        htmlBruto = null;
 
         // ==========================================
         // extrai ids promotion

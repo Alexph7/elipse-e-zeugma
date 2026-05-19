@@ -20,6 +20,9 @@ const bot = new TelegramBot(TOKEN, {
 
 const ARQUIVO_SENTINELAS = "./sentinelas.json";
 
+const ARQUIVO_CUPONS =
+    "./cupons-postados.json";
+
 const httpAgent = new http.Agent({
     keepAlive: true,
     maxSockets: 20
@@ -59,7 +62,7 @@ const cuponsPostados = new Map();
 // tempo máximo guardado:
 // 2 horas
 const TEMPO_EXPIRACAO_CUPOM =
-    2 * 60 * 60 * 1000;
+    24 * 60 * 60 * 1000;
 
 // ======================================================
 // UTIL
@@ -86,6 +89,46 @@ function carregarSentinelas() {
     return JSON.parse(
         fs.readFileSync(ARQUIVO_SENTINELAS)
     );
+}
+
+function salvarCuponsPostados() {
+
+    const obj = Object.fromEntries(
+        cuponsPostados
+    );
+
+    fs.writeFileSync(
+
+        ARQUIVO_CUPONS,
+
+        JSON.stringify(obj, null, 2)
+    );
+}
+
+function carregarCuponsPostados() {
+
+    if (
+        !fs.existsSync(
+            ARQUIVO_CUPONS
+        )
+    ) {
+        return;
+    }
+
+    const dados = JSON.parse(
+
+        fs.readFileSync(
+            ARQUIVO_CUPONS
+        )
+    );
+
+    for (const codigo in dados) {
+
+        cuponsPostados.set(
+            codigo,
+            dados[codigo]
+        );
+    }
 }
 
 function extrairBlocosPromocao(html) {
@@ -518,6 +561,8 @@ async function monitorar(execucaoNome) {
                 agoraTimestamp
             );
 
+            salvarCuponsPostados();
+
             const item =
                 detalhes[codigo];
 
@@ -753,6 +798,7 @@ setInterval(() => {
             cuponsPostados.delete(
                 codigo
             );
+            salvarCuponsPostados();
         }
     }
 
@@ -789,6 +835,8 @@ setInterval(() => {
 // ======================================================
 
 sentinelas = carregarSentinelas();
+
+carregarCuponsPostados();
 
 console.log("==================================");
 console.log(" BOT SENTINELAS INICIADO ");

@@ -3,6 +3,7 @@ require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 const axios = require("axios");
 const fs = require("fs");
+const path = require("path");
 const http = require("http");
 const https = require("https");
 const moment = require("moment-timezone");
@@ -566,48 +567,54 @@ async function monitorar(execucaoNome) {
             const item =
                 detalhes[codigo];
 
-            let mensagem = "";
+            let mensagem;
 
             // --------------------------------------
-            // VALOR FIXO
+            // CUPOM COMPLETO
             // --------------------------------------
 
-            if (item.tipo === "cupomCompleto") {
+            if (
+                item &&
+                item.tipo === "cupomCompleto"
+            ) {
 
                 if (item.porcentagem) {
 
                     mensagem =
-                        `<b>CUPOM AMAZON</b>
+                        `<b>CUPOM AMAZON APP</b>
 
-🔥 ${item.porcentagem}% OFF
-🛒 Acima de R$${item.minimo}
-🔑 <code>${item.codigo}</code>`;
+${item.limite
+                            ? `✅ ${item.porcentagem}% Até <b>R$${item.limite} OFF</b>`
+                            : `<b>✅ ${item.porcentagem}% OFF</b>`
+                        } 🔑 <code>${item.codigo}</code>
+Acima de R$${item.minimo}
+
+<b>🔗Ative no link: https://amzn.to/4e8aslJ</b>`;
 
                 } else {
 
                     mensagem =
-                        `<b>CUPOM AMAZON</b>
+                        `<b>CUPOM AMAZON APP</b>
 
-💰 R$${item.valorReais} OFF
-🛒 Acima de R$${item.minimo}
-🔑 <code>${item.codigo}</code>`;
+<b>✅ R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>
+
+<b>🔗Ative no link: https://amzn.to/4e8aslJ</b>`;
                 }
 
-            } else if (item.tipo === "codigoFallback") {
+            } else {
 
-                mensagem =
-                    `<b>CUPOM AMAZON</b>
-
-🔑 <code>${item.codigo}</code>`;
+                // não envia fallback feio
+                continue;
             }
             // ======================================
             // envia telegram
             // ======================================
 
-            await bot.sendMessage(
+            await bot.sendPhoto(
                 CANAL_ID,
-                mensagem,
+                path.join(__dirname, "imagem", "amazon.jpg"),
                 {
+                    caption: mensagem,
                     parse_mode: "HTML"
                 }
             );

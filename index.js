@@ -24,6 +24,9 @@ const ARQUIVO_SENTINELAS = "./sentinelas.json";
 const ARQUIVO_CUPONS =
     "./cupons-postados.json";
 
+const STORES_FILE =
+    "./stores.json";
+
 const httpAgent = new http.Agent({
     keepAlive: true,
     maxSockets: 20
@@ -35,6 +38,10 @@ const httpsAgent = new https.Agent({
 });
 
 let sentinelas = [];
+
+let STORES = {};
+
+let amazonLinkIndex = 0;
 
 // ======================================================
 // CONFIG MONITORAMENTO
@@ -70,6 +77,29 @@ const TEMPO_EXPIRACAO_CUPOM =
 
 function agoraSP() {
     return moment().tz("America/Sao_Paulo");
+}
+
+function obterProximoLinkAmazon() {
+
+    if (
+        !STORES.A ||
+        !Array.isArray(STORES.A.links) ||
+        !STORES.A.links.length
+    ) {
+
+        return "https://amazon.com.br";
+    }
+
+    const link =
+
+        STORES.A.links[
+        amazonLinkIndex %
+        STORES.A.links.length
+        ];
+
+    amazonLinkIndex++;
+
+    return link;
 }
 
 function salvarSentinelas(lista) {
@@ -129,6 +159,25 @@ function carregarCuponsPostados() {
             dados[codigo]
         );
     }
+}
+
+function carregarStores() {
+
+    if (!fs.existsSync(STORES_FILE)) {
+
+        console.log(
+            "stores.json não encontrado."
+        );
+
+        return;
+    }
+
+    STORES = JSON.parse(
+
+        fs.readFileSync(
+            STORES_FILE
+        )
+    );
 }
 
 function extrairBlocosPromocao(html) {
@@ -628,7 +677,7 @@ ${item.limite
                         } 🔑 <code>${item.codigo}</code>
 Acima de R$${item.minimo}
 
-<b>🔗Ative no link: https://amzn.to/4e8aslJ</b>`;
+<b>🔗Ative no link: ${obterProximoLinkAmazon()}</b>`;
 
                 } else {
 
@@ -637,7 +686,7 @@ Acima de R$${item.minimo}
 
 <b>✅ R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>
 
-<b>🔗Ative no link: https://amzn.to/4e8aslJ</b>`;
+<b>🔗Ative no link: ${obterProximoLinkAmazon()}</b>`;
                 }
 
             } else {
@@ -888,6 +937,8 @@ setInterval(() => {
 sentinelas = carregarSentinelas();
 
 carregarCuponsPostados();
+
+carregarStores();
 
 console.log("==================================");
 console.log(" BOT SENTINELAS INICIADO ");

@@ -61,7 +61,6 @@ let monitorandoAgora = false;
 const cuponsPostados = new Map();
 
 // tempo máximo guardado:
-// 2 horas
 const TEMPO_EXPIRACAO_CUPOM =
     24 * 60 * 60 * 1000;
 
@@ -148,6 +147,46 @@ function extrairBlocosPromocao(html) {
     }
 
     return matches.join("\n");
+}
+
+// ======================================================
+// JANELA OPERACAO
+// ======================================================
+
+// liga: 07:30
+const HORA_INICIO = 7;
+const MINUTO_INICIO = 30;
+
+// pausa: 00:10
+const HORA_FIM = 0;
+const MINUTO_FIM = 10;
+
+function dentroHorarioOperacao() {
+
+    const agora = agoraSP();
+
+    const hora =
+        Number(agora.format("H"));
+
+    const minuto =
+        Number(agora.format("m"));
+
+    const totalAtual =
+        (hora * 60) + minuto;
+
+    const inicio =
+        (HORA_INICIO * 60) + MINUTO_INICIO;
+
+    const fim =
+        (HORA_FIM * 60) + MINUTO_FIM;
+
+    // funciona:
+    // 07:30 -> 00:10
+
+    return (
+        totalAtual >= inicio ||
+        totalAtual <= fim
+    );
 }
 
 // ======================================================
@@ -642,6 +681,11 @@ Acima de R$${item.minimo}
 setInterval(async () => {
 
     try {
+
+        // fora da janela operacional
+        if (!dentroHorarioOperacao()) {
+            return;
+        }
 
         const config =
             obterModoAtual();

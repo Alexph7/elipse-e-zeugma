@@ -669,7 +669,7 @@ async function monitorar(execucaoNome) {
                 if (item.porcentagem) {
 
                     mensagem =
-                        `<b>CUPOM AMAZON APP</b>
+                        `<b>Cupom AMAZON App</b>
 
 ${item.limite
                             ? `✅ ${item.porcentagem}% até <b>R$${item.limite} OFF</b>`

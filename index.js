@@ -672,10 +672,10 @@ async function monitorar(execucaoNome) {
                         `<b>CUPOM AMAZON APP</b>
 
 ${item.limite
-                            ? `✅ ${item.porcentagem}% Até <b>R$${item.limite} OFF</b>`
+                            ? `✅ ${item.porcentagem}% até <b>R$${item.limite} OFF</b>`
                             : `<b>✅ ${item.porcentagem}% OFF</b>`
                         } 🔑 <code>${item.codigo}</code>
-Acima de R$${item.minimo}
+acima de R$${item.minimo}
 
 <b>🔗Ative no link: ${obterProximoLinkAmazon()}</b>`;
 

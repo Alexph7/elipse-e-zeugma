@@ -27,6 +27,9 @@ const ARQUIVO_CUPONS =
 const STORES_FILE =
     "./stores.json";
 
+const INDEX_FILE =
+    "./amazon-index.json";
+
 const httpAgent = new http.Agent({
     keepAlive: true,
     maxSockets: 20
@@ -40,8 +43,6 @@ const httpsAgent = new https.Agent({
 let sentinelas = [];
 
 let STORES = {};
-
-let amazonLinkIndex = 0;
 
 // ======================================================
 // CONFIG MONITORAMENTO
@@ -79,6 +80,43 @@ function agoraSP() {
     return moment().tz("America/Sao_Paulo");
 }
 
+function carregarAmazonIndex() {
+
+    if (!fs.existsSync(INDEX_FILE)) {
+        return 0;
+    }
+
+    try {
+
+        const dados = JSON.parse(
+            fs.readFileSync(INDEX_FILE)
+        );
+
+        return Number(dados.index) || 0;
+
+    } catch {
+
+        return 0;
+    }
+}
+
+function salvarAmazonIndex() {
+
+    fs.writeFileSync(
+        INDEX_FILE,
+        JSON.stringify(
+            {
+                index: amazonLinkIndex
+            },
+            null,
+            2
+        )
+    );
+}
+
+let amazonLinkIndex =
+    carregarAmazonIndex();
+
 function obterProximoLinkAmazon() {
 
     if (
@@ -90,14 +128,18 @@ function obterProximoLinkAmazon() {
         return "https://amazon.com.br";
     }
 
-    const link =
-
-        STORES.A.links[
+    amazonLinkIndex =
         amazonLinkIndex %
-        STORES.A.links.length
-        ];
+        STORES.A.links.length;
 
-    amazonLinkIndex++;
+    const link =
+        STORES.A.links[amazonLinkIndex];
+
+    amazonLinkIndex =
+        (amazonLinkIndex + 1) %
+        STORES.A.links.length;
+
+    salvarAmazonIndex();
 
     return link;
 }
@@ -667,6 +709,8 @@ async function monitorar(execucaoNome) {
             ) {
 
                 if (item.porcentagem) {
+                    const linkAmazon =
+                        obterProximoLinkAmazon();
 
                     mensagem =
                         `<b>Cupom AMAZON App</b>
@@ -677,16 +721,16 @@ ${item.limite
                         } 🔑 <code>${item.codigo}</code>
 acima de R$${item.minimo}
 
-<b>🔗Ative no link: ${obterProximoLinkAmazon()}</b>`;
+<b>🔗Ative no link: ${linkAmazon}</b>`;
 
                 } else {
-
+                    const linkAmazon = obterProximoLinkAmazon();
                     mensagem =
                         `<b>CUPOM AMAZON APP</b>
 
 <b>✅ R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>
 
-<b>🔗Ative no link: ${obterProximoLinkAmazon()}</b>`;
+<b>🔗Ative no link: ${linkAmazon}</b>`;
                 }
 
             } else {

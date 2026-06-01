@@ -491,6 +491,11 @@ async function analisarProduto(url, cachePromotions) {
         const encontrados =
             extrairCupons(html);
 
+        if (html.includes("6DO6DEMAIS")) {
+            console.log("ACHEI 6DO6DEMAIS NO HTML");
+            console.log(encontrados);
+        }
+
         const promotions =
             encontrados.filter(
                 x => x.tipo === "promotion"

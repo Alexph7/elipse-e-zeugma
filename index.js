@@ -408,7 +408,7 @@ function extrairCupons(html) {
     let match;
 
     const regexTermos =
-        /Ganhe\s+(?:(\d+)%|R\$\s*([\d.,\u00A0]+))\s+off\s+em\s+compras\s+a\s+partir\s+de\s+R\$\s*([\d.,\u00A0]+)(?:\s+\(limitado\s+a\s+R\$\s*([\d.,\u00A0]+)\))?.*?Cupom\s+de\s+desconto:\s*<groupClaimCode>([A-Z0-9]+)<\/groupClaimCode>/gis;
+        /Ganhe\s+(?:(\d+)%|R\$\s*([\d.,\u00A0]+))\s+off\s+em\s+compras\s+(?:a\s+partir\s+de|acima\s+de)\s+R\$\s*([\d.,\u00A0]+)(?:\s+\(limitado\s+a\s+R\$\s*([\d.,\u00A0]+)\))?.*?Cupom\s+de\s+desconto:\s*<groupClaimCode>([A-Z0-9]+)<\/groupClaimCode>/gis;
 
     const regexCodigoFallback =
         /Cupom\s+de\s+desconto:\s*([A-Z0-9]+)/gi;
@@ -491,10 +491,11 @@ async function analisarProduto(url, cachePromotions) {
         const encontrados =
             extrairCupons(html);
 
-        if (html.includes("6DO6DEMAIS")) {
-            console.log("ACHEI 6DO6DEMAIS NO HTML");
-            console.log(encontrados);
-        }
+        console.log("================================");
+        console.log("URL:", url);
+        console.log("ENCONTRADOS PAGINA:");
+        console.log(encontrados);
+        console.log("================================");
 
         const promotions =
             encontrados.filter(
@@ -551,10 +552,30 @@ async function analisarProduto(url, cachePromotions) {
                             }
                         );
 
+                    console.log("================================");
+                    console.log("POPUP:", promo.id);
+                    console.log(
+                        popup.data
+                            .replace(/\s+/g, " ")
+                            .slice(0, 5000)
+                    );
+                    console.log("================================");
+
                     extras =
                         extrairCupons(
                             popup.data
                         );
+
+                    console.log("================================");
+                    console.log("EXTRAS EXTRAIDOS:", promo.id);
+                    console.log(
+                        JSON.stringify(
+                            extras,
+                            null,
+                            2
+                        )
+                    );
+                    console.log("================================");
 
                     // salva no cache
                     cachePromotions.set(

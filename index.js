@@ -1,5 +1,12 @@
-require("dotenv").config();
+const dns = require("dns");
 
+dns.setDefaultResultOrder("ipv4first");
+
+dns.lookup("api.telegram.org", { all: true }, (err, addresses) => {
+    console.log("DNS Telegram:", addresses);
+});
+
+require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 const axios = require("axios");
 const fs = require("fs");
@@ -32,12 +39,14 @@ const INDEX_FILE =
 
 const httpAgent = new http.Agent({
     keepAlive: true,
-    maxSockets: 20
+    maxSockets: 20,
+    family: 4
 });
 
 const httpsAgent = new https.Agent({
     keepAlive: true,
-    maxSockets: 20
+    maxSockets: 20,
+    family: 4
 });
 
 let sentinelas = [];

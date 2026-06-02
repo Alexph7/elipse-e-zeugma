@@ -566,7 +566,7 @@ async function analisarProduto(url, cachePromotions) {
                             popup.data
                         );
 
-                    /* console.log("================================");
+                    console.log("================================");
                     console.log("EXTRAS EXTRAIDOS:", promo.id);
                     console.log(
                         JSON.stringify(
@@ -575,7 +575,7 @@ async function analisarProduto(url, cachePromotions) {
                             2
                         )
                     );
-                    console.log("================================"); */
+                    console.log("================================");
 
                     // salva no cache
                     cachePromotions.set(

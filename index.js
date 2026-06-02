@@ -491,11 +491,11 @@ async function analisarProduto(url, cachePromotions) {
         const encontrados =
             extrairCupons(html);
 
-        console.log("================================");
+        /* console.log("================================");
         console.log("URL:", url);
         console.log("ENCONTRADOS PAGINA:");
         console.log(encontrados);
-        console.log("================================"); 
+        console.log("================================");  */
 
         const promotions =
             encontrados.filter(
@@ -552,21 +552,21 @@ async function analisarProduto(url, cachePromotions) {
                             }
                         );
 
-                    console.log("================================");
+                    /* console.log("================================");
                     console.log("POPUP:", promo.id);
                     console.log(
                         popup.data
                             .replace(/\s+/g, " ")
                             .slice(0, 5000)
                     );
-                    console.log("================================");
+                    console.log("================================"); */
 
                     extras =
                         extrairCupons(
                             popup.data
                         );
 
-                    console.log("================================");
+                    /* console.log("================================");
                     console.log("EXTRAS EXTRAIDOS:", promo.id);
                     console.log(
                         JSON.stringify(
@@ -575,8 +575,8 @@ async function analisarProduto(url, cachePromotions) {
                             2
                         )
                     );
-                    console.log("================================");
- 
+                    console.log("================================"); */
+
                     // salva no cache
                     cachePromotions.set(
                         promo.id,

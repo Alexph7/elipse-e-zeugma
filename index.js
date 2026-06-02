@@ -411,7 +411,7 @@ function extrairCupons(html) {
         /Ganhe\s+(?:(\d+)%|R\$\s*([\d.,\u00A0]+))\s+off\s+em\s+compras\s+(?:a\s+partir\s+de|acima\s+de)\s+R\$\s*([\d.,\u00A0]+)(?:\s+\(limitado\s+a\s+R\$\s*([\d.,\u00A0]+)\))?.*?Cupom\s+de\s+desconto:\s*<groupClaimCode>([A-Z0-9]+)<\/groupClaimCode>/gis;
 
     const regexCodigoFallback =
-        /Cupom\s+de\s+desconto:\s*([A-Z0-9]+)/gi;
+        /<groupClaimCode>([A-Z0-9]+)<\/groupClaimCode>/gi;
 
     while (
         (match = regexTermos.exec(html)) !== null
@@ -565,6 +565,12 @@ async function analisarProduto(url, cachePromotions) {
                         extrairCupons(
                             popup.data
                         );
+
+                    if (promo.id === "A18BVK047WQ0HR") {
+                        console.log(
+                            popup.data.match(/<groupClaimCode>(.*?)<\/groupClaimCode>/i)
+                        );
+                    }
 
                     console.log("================================");
                     console.log("EXTRAS EXTRAIDOS:", promo.id);

@@ -1,7 +1,6 @@
 const dns = require("dns");
 
 dns.setDefaultResultOrder("ipv4first");
-
 dns.lookup("api.telegram.org", { all: true }, (err, addresses) => {
     console.log("DNS Telegram:", addresses);
 });

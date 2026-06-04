@@ -72,13 +72,15 @@ const REQUEST_TIMEOUT = 10000;
 let aguardandoLinks = false;
 let monitorandoAgora = false;
 
+let ultimoContadorGlobal = {};
+
 // evita repost temporário
 // codigo -> timestamp
 const cuponsPostados = new Map();
 
-// tempo máximo guardado:
-const TEMPO_EXPIRACAO_CUPOM =
-    24 * 60 * 60 * 1000;
+const cuponsDesaparecidos = new Map();
+
+const CICLOS_DESAPARECIMENTO = 3;
 
 // ======================================================
 // UTIL
@@ -696,6 +698,7 @@ async function monitorar(execucaoNome) {
         }
 
         console.log(contador);
+        ultimoContadorGlobal = contador;
 
         // ==========================================
         // confirma campanha
@@ -710,26 +713,18 @@ async function monitorar(execucaoNome) {
                 continue;
             }
 
-            // evita repost
-            const agoraTimestamp =
-                Date.now();
-
-            const ultimoPost =
-                cuponsPostados.get(codigo);
-
-            // ainda dentro da janela
-            if (
-                ultimoPost &&
-                agoraTimestamp - ultimoPost <
-                TEMPO_EXPIRACAO_CUPOM
-            ) {
+            if (cuponsPostados.has(codigo)) {
                 continue;
             }
 
-            // salva timestamp novo
             cuponsPostados.set(
                 codigo,
-                agoraTimestamp
+                true
+            );
+
+            cuponsDesaparecidos.set(
+                codigo,
+                0
             );
 
             salvarCuponsPostados();
@@ -1017,33 +1012,48 @@ bot.on("message", async (msg) => {
     );
 });
 
-// ======================================================
-// LIMPEZA CUPONS POSTADOS
-// ======================================================
-
 setInterval(() => {
 
-    const agora =
-        Date.now();
+    if (!Object.keys(ultimoContadorGlobal).length) {
+        return;
+    }
 
-    for (
-        const [codigo, timestamp]
-        of cuponsPostados
-    ) {
+    for (const codigo of cuponsPostados.keys()) {
+
+        const total =
+            ultimoContadorGlobal[codigo] || 0;
+
+        if (total > 0) {
+
+            cuponsDesaparecidos.set(
+                codigo,
+                0
+            );
+
+            continue;
+        }
+
+        const ciclos =
+            (cuponsDesaparecidos.get(codigo) || 0) + 1;
+
+        cuponsDesaparecidos.set(
+            codigo,
+            ciclos
+        );
 
         if (
-            agora - timestamp >
-            TEMPO_EXPIRACAO_CUPOM
+            ciclos >= CICLOS_DESAPARECIMENTO
         ) {
 
-            cuponsPostados.delete(
-                codigo
-            );
+            cuponsPostados.delete(codigo);
+
+            cuponsDesaparecidos.delete(codigo);
+
             salvarCuponsPostados();
         }
     }
 
-}, 30 * 60 * 1000);
+}, 5 * 60 * 1000);
 
 // ======================================================
 // MEMORIA

@@ -856,6 +856,63 @@ setInterval(async () => {
 }, 1000);
 
 // ======================================================
+// FALLBACK LEVE
+// ======================================================
+
+setInterval(async () => {
+
+    try {
+
+        // fora da janela operacional
+        if (!dentroHorarioOperacao()) {
+            return;
+        }
+
+        const agora = agoraSP();
+
+        const minuto = Number(
+            agora.format("m")
+        );
+
+        const segundo = Number(
+            agora.format("s")
+        );
+
+        // ignora minutos já monitorados
+        if (
+            minuto === 0 ||
+            minuto === 1 ||
+            minuto === 2 ||
+            minuto === 58 ||
+            minuto === 59 ||
+            minuto % 5 === 0
+        ) {
+            return;
+        }
+
+        // executa apenas :00 e :10
+        if (
+            segundo !== 0 &&
+            segundo !== 10
+        ) {
+            return;
+        }
+
+        await monitorar(
+            "FALLBACK-LEVE"
+        );
+
+    } catch (err) {
+
+        console.log(
+            "Erro fallback:",
+            err.message
+        );
+    }
+
+}, 1000);
+
+// ======================================================
 // TELEGRAM
 // ======================================================
 

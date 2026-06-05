@@ -1014,7 +1014,24 @@ bot.on("message", async (msg) => {
 
 setInterval(() => {
 
+    console.log("======== LIMPADOR ========");
+
+    console.log(
+        "ultimoContadorGlobal:",
+        ultimoContadorGlobal
+    );
+
+    console.log(
+        "cuponsPostados:",
+        [...cuponsPostados.keys()]
+    );
+
     if (!Object.keys(ultimoContadorGlobal).length) {
+
+        console.log(
+            "SAIU POR CONTADOR VAZIO"
+        );
+
         return;
     }
 
@@ -1023,7 +1040,18 @@ setInterval(() => {
         const total =
             ultimoContadorGlobal[codigo] || 0;
 
+        console.log(
+            "CUPOM:",
+            codigo,
+            "TOTAL:",
+            total
+        );
+
         if (total > 0) {
+
+            console.log(
+                "ZEROU DESAPARECIMENTO"
+            );
 
             cuponsDesaparecidos.set(
                 codigo,
@@ -1036,6 +1064,11 @@ setInterval(() => {
         const ciclos =
             (cuponsDesaparecidos.get(codigo) || 0) + 1;
 
+        console.log(
+            "CICLOS:",
+            ciclos
+        );
+
         cuponsDesaparecidos.set(
             codigo,
             ciclos
@@ -1044,6 +1077,11 @@ setInterval(() => {
         if (
             ciclos >= CICLOS_DESAPARECIMENTO
         ) {
+
+            console.log(
+                "REMOVENDO:",
+                codigo
+            );
 
             cuponsPostados.delete(codigo);
 

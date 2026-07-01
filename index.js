@@ -759,7 +759,7 @@ ${item.limite
                         } 🔑 <code>${item.codigo}</code>
 acima de R$${item.minimo}
 
-<b>🔗Ative no link: ${linkAmazon}</b>`;
+<b>🔗Tipo resgatavel em paginas: ${linkAmazon}</b>`;
 
                 } else {
                     const linkAmazon = obterProximoLinkAmazon();
@@ -768,7 +768,7 @@ acima de R$${item.minimo}
 
 <b>✅ R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>
 
-<b>🔗Ative no link: ${linkAmazon}</b>`;
+<b>🔗Tipo resgatavel em paginas: ${linkAmazon}</b>`;
                 }
 
             } else {

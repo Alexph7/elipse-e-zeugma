@@ -560,6 +560,16 @@ async function analisarProduto(url, cachePromotions) {
                             .replace(/\s+/g, " ")
                             .slice(0, 5000)
                     );
+
+                    console.log("================================");
+                    console.log("PROMO:", promo.id);
+
+                    const resultadoRegex = popup.data.match(
+                        /Ganhe[\s\S]{0,500}Cupom[\s\S]{0,200}/i
+                    );
+
+                    console.log("TRECHO:");
+                    console.log(resultadoRegex ? resultadoRegex[0] : "NÃO ENCONTROU");
                     console.log("================================");
 
                     extras =
@@ -567,13 +577,18 @@ async function analisarProduto(url, cachePromotions) {
                             popup.data
                         );
 
+                    console.log("================================");
+                    console.log("PROMO:", promo.id);
+                    console.log("EXTRAS:");
+                    console.log(JSON.stringify(extras, null, 2));
+                    console.log("================================");
+
                     if (promo.id === "A18BVK047WQ0HR") {
                         console.log(
                             popup.data.match(/<groupClaimCode>(.*?)<\/groupClaimCode>/i)
                         );
                     }
 
-                    console.log("================================");
                     console.log("EXTRAS EXTRAIDOS:", promo.id);
                     console.log(
                         JSON.stringify(
@@ -582,7 +597,6 @@ async function analisarProduto(url, cachePromotions) {
                             2
                         )
                     );
-                    console.log("================================");
                     // salva no cache
                     cachePromotions.set(
                         promo.id,
@@ -765,7 +779,6 @@ acima de R$${item.minimo}
                 }
             );
 
-            console.log("Enviado com sucesso");
             console.log(
                 "Campanha confirmada:",
                 codigo
@@ -962,12 +975,6 @@ bot.on("message", async (msg) => {
 
 setInterval(() => {
 
-    console.log("======== LIMPADOR ========");
-    console.log(
-        "ultimoContadorGlobal:",
-        ultimoContadorGlobal
-    );
-
     console.log(
         "cuponsPostados:",
         [...cuponsPostados.keys()]
@@ -1036,24 +1043,6 @@ setInterval(() => {
     }
 
 }, 5 * 60 * 1000);
-
-setInterval(() => {
-
-    const m =
-        process.memoryUsage();
-
-    console.log({
-        rss:
-            `${Math.round(m.rss / 1024 / 1024)} MB`,
-        heapUsed:
-            `${Math.round(m.heapUsed / 1024 / 1024)} MB`,
-        heapTotal:
-            `${Math.round(m.heapTotal / 1024 / 1024)} MB`,
-        external:
-            `${Math.round(m.external / 1024 / 1024)} MB`
-    });
-
-}, 60000);
 
 sentinelas = carregarSentinelas();
 carregarCuponsPostados();

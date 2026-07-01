@@ -426,7 +426,7 @@ function extrairCupons(html) {
     let match;
 
     const regexTermos =
-        /Ganhe\s+(?:(\d+)%|R\$\s*([\d.,\u00A0]+))(?:\s*off)?\s+em\s+compras\s+(?:a\s+partir\s+de|acima\s+de)\s+R\$\s*([\d.,\u00A0]+)(?:\s+\(limitado\s+a\s+R\$\s*([\d.,\u00A0]+)\))?.*?Cupom\s+de\s+desconto:\s*<groupClaimCode>([A-Z0-9]+)<\/groupClaimCode>/gis;
+        /Ganhe\s+(?:(\d+)%|R\$\s*([\d.,\u00A0]+))(?:\s+off)?\s+em\s+compras\s+(?:a\s+partir\s+de|acima\s+de)\s+R\$\s*([\d.,\u00A0]+)(?:\s+\(limitado\s+a\s+R\$\s*([\d.,\u00A0]+)\))?.*?Cupom\s+de\s+desconto:\s*<groupClaimCode>([A-Z0-9]+)<\/groupClaimCode>/gis;
 
     const regexCodigoFallback =
         /<groupClaimCode>([A-Z0-9]+)<\/groupClaimCode>/gi;

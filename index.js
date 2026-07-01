@@ -14,10 +14,7 @@ const http = require("http");
 const https = require("https");
 const moment = require("moment-timezone");
 
-// ======================================================
 // CONFIG
-// ======================================================
-
 const TOKEN = process.env.TOKEN;
 const CANAL_ID = process.env.CANAL_ID;
 
@@ -36,6 +33,9 @@ const STORES_FILE =
 const INDEX_FILE =
     "./amazon-index.json";
 
+const IMAGEM_INDEX_FILE =
+    "./imagem-index.json";
+
 const httpAgent = new http.Agent({
     keepAlive: true,
     maxSockets: 20,
@@ -49,13 +49,9 @@ const httpsAgent = new https.Agent({
 });
 
 let sentinelas = [];
-
 let STORES = {};
 
-// ======================================================
 // CONFIG MONITORAMENTO
-// ======================================================
-
 const MIN_LINKS = 6;
 const MAX_LINKS = 10;
 
@@ -65,10 +61,7 @@ const QUORUM = 3;
 // timeout requests
 const REQUEST_TIMEOUT = 10000;
 
-// ======================================================
 // ESTADO
-// ======================================================
-
 let aguardandoLinks = false;
 let monitorandoAgora = false;
 
@@ -77,14 +70,8 @@ let ultimoContadorGlobal = {};
 // evita repost temporário
 // codigo -> timestamp
 const cuponsPostados = new Map();
-
 const cuponsDesaparecidos = new Map();
-
 const CICLOS_DESAPARECIMENTO = 3;
-
-// ======================================================
-// UTIL
-// ======================================================
 
 function agoraSP() {
     return moment().tz("America/Sao_Paulo");
@@ -110,6 +97,26 @@ function carregarAmazonIndex() {
     }
 }
 
+function carregarImagemIndex() {
+
+    if (!fs.existsSync(IMAGEM_INDEX_FILE)) {
+        return 0;
+    }
+
+    try {
+
+        const dados = JSON.parse(
+            fs.readFileSync(IMAGEM_INDEX_FILE)
+        );
+
+        return Number(dados.index) || 0;
+
+    } catch {
+
+        return 0;
+    }
+}
+
 function salvarAmazonIndex() {
 
     fs.writeFileSync(
@@ -124,8 +131,25 @@ function salvarAmazonIndex() {
     );
 }
 
+function salvarImagemIndex() {
+
+    fs.writeFileSync(
+        IMAGEM_INDEX_FILE,
+        JSON.stringify(
+            {
+                index: imagemIndex
+            },
+            null,
+            2
+        )
+    );
+}
+
 let amazonLinkIndex =
     carregarAmazonIndex();
+
+let imagemIndex =
+    carregarImagemIndex();
 
 function obterProximoLinkAmazon() {
 
@@ -154,8 +178,45 @@ function obterProximoLinkAmazon() {
     return link;
 }
 
-function salvarSentinelas(lista) {
+function obterProximaImagem() {
 
+    const pasta =
+        path.join(__dirname, "imagem");
+
+    const imagens = fs.readdirSync(pasta)
+
+        .filter(arquivo =>
+            /\.(jpg|jpeg|png)$/i.test(arquivo)
+        )
+
+        .sort();
+
+    if (!imagens.length) {
+
+        throw new Error(
+            "Nenhuma imagem encontrada."
+        );
+    }
+
+    imagemIndex =
+        imagemIndex % imagens.length;
+
+    const imagem =
+        path.join(
+            pasta,
+            imagens[imagemIndex]
+        );
+
+    imagemIndex =
+        (imagemIndex + 1) %
+        imagens.length;
+
+    salvarImagemIndex();
+
+    return imagem;
+}
+
+function salvarSentinelas(lista) {
     fs.writeFileSync(
         ARQUIVO_SENTINELAS,
         JSON.stringify(lista, null, 2)
@@ -167,7 +228,6 @@ function carregarSentinelas() {
     if (!fs.existsSync(ARQUIVO_SENTINELAS)) {
         return [];
     }
-
     return JSON.parse(
         fs.readFileSync(ARQUIVO_SENTINELAS)
     );
@@ -180,9 +240,7 @@ function salvarCuponsPostados() {
     );
 
     fs.writeFileSync(
-
         ARQUIVO_CUPONS,
-
         JSON.stringify(obj, null, 2)
     );
 }
@@ -216,16 +274,13 @@ function carregarCuponsPostados() {
 function carregarStores() {
 
     if (!fs.existsSync(STORES_FILE)) {
-
         console.log(
             "stores.json não encontrado."
         );
-
         return;
     }
 
     STORES = JSON.parse(
-
         fs.readFileSync(
             STORES_FILE
         )
@@ -236,7 +291,6 @@ function extrairBlocosPromocao(html) {
 
     // pega apenas blocos que contenham promotion popup
     // reduz MUITO o html processado
-
     const matches = html.match(
 
         /<div[^>]*>[\s\S]*?promotion\/details\/popup\/[A-Z0-9]+[\s\S]*?<\/div>/gi
@@ -246,14 +300,10 @@ function extrairBlocosPromocao(html) {
     if (!matches) {
         return "";
     }
-
     return matches.join("\n");
 }
 
-// ======================================================
 // JANELA OPERACAO
-// ======================================================
-
 // liga: 07:30
 const HORA_INICIO = 7;
 const MINUTO_INICIO = 30;
@@ -265,49 +315,34 @@ const MINUTO_FIM = 10;
 function dentroHorarioOperacao() {
 
     const agora = agoraSP();
-
     const hora =
         Number(agora.format("H"));
-
     const minuto =
         Number(agora.format("m"));
-
     const totalAtual =
         (hora * 60) + minuto;
-
     const inicio =
         (HORA_INICIO * 60) + MINUTO_INICIO;
-
     const fim =
         (HORA_FIM * 60) + MINUTO_FIM;
 
-    // funciona:
-    // 07:30 -> 00:10
-
+    // funciona: 07:30 -> 00:10
     return (
         totalAtual >= inicio ||
         totalAtual <= fim
     );
 }
 
-// ======================================================
 // JANELA DE MONITORAMENTO
-// ======================================================
-
 function obterModoAtual() {
 
     const agora = agoraSP();
-
     const minuto = Number(
         agora.format("m")
     );
 
-    // --------------------------------
     // HORA CHEIA
-    // 08:00:00 -> 08:00:59
-    // polling 5 segundos
-    // --------------------------------
-
+    // 08:00:00 -> 08:00:59 polling 5 segundos
     if (minuto === 0) {
 
         return {
@@ -317,11 +352,8 @@ function obterModoAtual() {
         };
     }
 
-    // --------------------------------
     // PRE AQUECIMENTO
-    // xx:58 e xx:59
-    // polling 10 segundos
-    // --------------------------------
+    // xx:58 e xx:59 polling 10 segundos
 
     if (
         minuto === 58 ||
@@ -335,11 +367,8 @@ function obterModoAtual() {
         };
     }
 
-    // --------------------------------
     // POS AQUECIMENTO
-    // xx:01 e xx:02
-    // polling 10 segundos
-    // --------------------------------
+    // xx:01 e xx:02 polling 10 segundos
 
     if (
         minuto === 1 ||
@@ -353,12 +382,8 @@ function obterModoAtual() {
         };
     }
 
-    // --------------------------------
     // ALEATORIOS
-    // 05 10 15 20 25...
-    // polling 5 segundos
-    // --------------------------------
-
+    // 05 10 15 20 25... polling 5 segundos
     if (minuto % 5 === 0) {
 
         return {
@@ -373,18 +398,12 @@ function obterModoAtual() {
     };
 }
 
-// ======================================================
 // EXTRAÇÃO CUPONS
-// ======================================================
-
 function extrairCupons(html) {
 
     const encontrados = [];
 
-    // ==================================================
     // PROMOTION IDS
-    // ==================================================
-
     const regexPromotion =
         /promotion\/details\/popup\/([A-Z0-9]+)/gi;
 
@@ -402,9 +421,7 @@ function extrairCupons(html) {
         });
     }
 
-    // ==================================================
     // TERMOS COMPLETOS
-    // ==================================================
 
     let match;
 
@@ -445,14 +462,10 @@ function extrairCupons(html) {
             codigo: match[1]
         });
     }
-
     return encontrados;
 }
 
-// ======================================================
 // REQUEST PRODUTO
-// ======================================================
-
 async function analisarProduto(url, cachePromotions) {
 
     try {
@@ -477,26 +490,18 @@ async function analisarProduto(url, cachePromotions) {
             }
         });
 
-
         let htmlBruto = response.data;
-
         const html =
             extrairBlocosPromocao(htmlBruto);
-
         htmlBruto = null;
 
-        // ==========================================
         // extrai ids promotion
-        // ==========================================
-
         const encontrados =
             extrairCupons(html);
 
-        console.log("================================");
         console.log("URL:", url);
         console.log("ENCONTRADOS PAGINA:");
         console.log(encontrados);
-        console.log("================================");
 
         const promotions =
             encontrados.filter(
@@ -505,14 +510,10 @@ async function analisarProduto(url, cachePromotions) {
 
         const promotionsVistas =
             new Set();
-
         // cupons finais
         const cupons = [];
 
-        // ==========================================
         // abre popup termos
-        // ==========================================
-
         for (const promo of promotions) {
 
 
@@ -533,7 +534,6 @@ async function analisarProduto(url, cachePromotions) {
                             `https://www.amazon.com.br/promotion/details/popup/${promo.id}`,
 
                             {
-
                                 httpAgent,
                                 httpsAgent,
 
@@ -583,14 +583,12 @@ async function analisarProduto(url, cachePromotions) {
                         )
                     );
                     console.log("================================");
-
                     // salva no cache
                     cachePromotions.set(
                         promo.id,
                         extras
                     );
                 }
-
                 // mantém apenas cupons reais
                 cupons.push(
 
@@ -608,7 +606,6 @@ async function analisarProduto(url, cachePromotions) {
                 );
             }
         }
-
         return cupons;
 
     } catch (err) {
@@ -621,10 +618,6 @@ async function analisarProduto(url, cachePromotions) {
         return [];
     }
 }
-
-// ======================================================
-// MONITORAMENTO
-// ======================================================
 
 async function monitorar(execucaoNome) {
 
@@ -646,15 +639,11 @@ async function monitorar(execucaoNome) {
 
             return;
         }
-
         console.log(
             `[${agoraSP().format("HH:mm:ss")}] ${execucaoNome}`
         );
 
-        // ==========================================
         // baixa todos htmls
-        // ==========================================
-
         const resultados =
             await Promise.all(
 
@@ -663,15 +652,11 @@ async function monitorar(execucaoNome) {
                 )
             );
 
-        // ==========================================
         // quorum
-        // ==========================================
-
         const contador = {};
         const detalhes = {};
 
         for (const lista of resultados) {
-
             // evita repetir no mesmo html
             const vistos = new Set();
 
@@ -699,10 +684,6 @@ async function monitorar(execucaoNome) {
 
         console.log(contador);
         ultimoContadorGlobal = contador;
-
-        // ==========================================
-        // confirma campanha
-        // ==========================================
 
         for (const codigo in contador) {
 
@@ -737,10 +718,7 @@ async function monitorar(execucaoNome) {
 
             let mensagem;
 
-            // --------------------------------------
             // CUPOM COMPLETO
-            // --------------------------------------
-
             if (
                 item &&
                 item.tipo === "cupomCompleto"
@@ -752,39 +730,31 @@ async function monitorar(execucaoNome) {
 
                     mensagem =
                         `<b>Cupom AMAZON App</b>
-
 ${item.limite
                             ? `✅ ${item.porcentagem}% até <b>R$${item.limite} OFF</b>`
                             : `<b>✅ ${item.porcentagem}% OFF</b>`
                         } 🔑 <code>${item.codigo}</code>
 acima de R$${item.minimo}
-
 <b>🔗resgatavel em paginas: ${linkAmazon}</b>`;
 
                 } else {
                     const linkAmazon = obterProximoLinkAmazon();
                     mensagem =
                         `<b>CUPOM AMAZON APP</b>
-
 <b>✅ R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>
-
 <b>🔗resgatavel em paginas: ${linkAmazon}</b>`;
                 }
 
             } else {
-
                 // não envia fallback feio
                 continue;
             }
-            // ======================================
-            // envia telegram
-            // ======================================
 
             console.log("Vai enviar ao Telegram");
 
             await bot.sendPhoto(
                 CANAL_ID,
-                path.join(__dirname, "imagem", "amazon.jpg"),
+                obterProximaImagem(),
                 {
                     caption: mensagem,
                     parse_mode: "HTML"
@@ -798,24 +768,14 @@ acima de R$${item.minimo}
             );
         }
 
-        // IMPORTANTISSIMO:
-        // terminou ciclo
-        // tudo vai embora da memória
-
     } finally {
-
         monitorandoAgora = false;
     }
 }
 
-// ======================================================
-// LOOP PRINCIPAL
-// ======================================================
-
 setInterval(async () => {
 
     try {
-
         // fora da janela operacional
         if (!dentroHorarioOperacao()) {
             return;
@@ -829,13 +789,11 @@ setInterval(async () => {
         }
 
         const agora = agoraSP();
-
         const segundo = Number(
             agora.format("s")
         );
 
         // respeita polling
-
         if (
             segundo % config.intervalo !== 0
         ) {
@@ -856,14 +814,9 @@ setInterval(async () => {
 
 }, 1000);
 
-// ======================================================
-// FALLBACK LEVE
-// ======================================================
-
 setInterval(async () => {
 
     try {
-
         // fora da janela operacional
         if (!dentroHorarioOperacao()) {
             return;
@@ -878,7 +831,6 @@ setInterval(async () => {
         const segundo = Number(
             agora.format("s")
         );
-
         // ignora minutos já monitorados
         if (
             minuto === 0 ||
@@ -913,14 +865,6 @@ setInterval(async () => {
 
 }, 1000);
 
-// ======================================================
-// TELEGRAM
-// ======================================================
-
-// --------------------------------
-// iniciar cadastro
-// --------------------------------
-
 bot.onText(/\/links/, async (msg) => {
 
     aguardandoLinks = true;
@@ -934,7 +878,6 @@ bot.onText(/\/links/, async (msg) => {
 // --------------------------------
 // receber links
 // --------------------------------
-
 bot.on("message", async (msg) => {
 
     if (!aguardandoLinks) {
@@ -964,11 +907,9 @@ bot.on("message", async (msg) => {
         );
 
     // remove duplicados
-
     links = [...new Set(links)];
 
     // máximo
-
     if (links.length > MAX_LINKS) {
 
         return bot.sendMessage(
@@ -978,7 +919,6 @@ bot.on("message", async (msg) => {
     }
 
     // mínimo
-
     if (links.length < MIN_LINKS) {
 
         return bot.sendMessage(
@@ -988,9 +928,7 @@ bot.on("message", async (msg) => {
     }
 
     salvarSentinelas(links);
-
     sentinelas = links;
-
     aguardandoLinks = false;
 
     await bot.sendMessage(
@@ -1021,7 +959,6 @@ bot.on("message", async (msg) => {
 setInterval(() => {
 
     console.log("======== LIMPADOR ========");
-
     console.log(
         "ultimoContadorGlobal:",
         ultimoContadorGlobal
@@ -1037,7 +974,6 @@ setInterval(() => {
         console.log(
             "SAIU POR CONTADOR VAZIO"
         );
-
         return;
     }
 
@@ -1090,18 +1026,12 @@ setInterval(() => {
             );
 
             cuponsPostados.delete(codigo);
-
             cuponsDesaparecidos.delete(codigo);
-
             salvarCuponsPostados();
         }
     }
 
 }, 5 * 60 * 1000);
-
-// ======================================================
-// MEMORIA
-// ======================================================
 
 setInterval(() => {
 
@@ -1109,32 +1039,20 @@ setInterval(() => {
         process.memoryUsage();
 
     console.log({
-
         rss:
             `${Math.round(m.rss / 1024 / 1024)} MB`,
-
         heapUsed:
             `${Math.round(m.heapUsed / 1024 / 1024)} MB`,
-
         heapTotal:
             `${Math.round(m.heapTotal / 1024 / 1024)} MB`,
-
         external:
             `${Math.round(m.external / 1024 / 1024)} MB`
     });
 
 }, 60000);
 
-// ======================================================
-// START
-// ======================================================
-
 sentinelas = carregarSentinelas();
-
 carregarCuponsPostados();
-
 carregarStores();
 
-console.log("==================================");
 console.log(" BOT SENTINELAS INICIADO ");
-console.log("==================================");

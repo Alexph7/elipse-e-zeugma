@@ -730,18 +730,22 @@ async function monitorar(execucaoNome) {
 
                     mensagem =
                         `<b>Cupom AMAZON App</b>
+
 ${item.limite
                             ? `✅ ${item.porcentagem}% até <b>R$${item.limite} OFF</b>`
                             : `<b>✅ ${item.porcentagem}% OFF</b>`
                         } 🔑 <code>${item.codigo}</code>
 acima de R$${item.minimo}
+
 <b>🔗resgatavel em paginas: ${linkAmazon}</b>`;
 
                 } else {
                     const linkAmazon = obterProximoLinkAmazon();
                     mensagem =
                         `<b>CUPOM AMAZON APP</b>
+
 <b>✅ R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>
+
 <b>🔗resgatavel em paginas: ${linkAmazon}</b>`;
                 }
 

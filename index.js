@@ -60,7 +60,7 @@ const MIN_LINKS = 6;
 const MAX_LINKS = 10;
 
 // mínimo para confirmar campanha global
-const QUORUM = 4;
+const QUORUM = 3;
 
 // timeout requests
 const REQUEST_TIMEOUT = 10000;
@@ -729,8 +729,11 @@ async function monitorar(execucaoNome) {
 
             salvarCuponsPostados();
 
-            const item =
-                detalhes[codigo];
+            const item = detalhes[codigo];
+
+            console.log("===== ENVIO =====");
+            console.log("Código:", codigo);
+            console.log("Item:", item);
 
             let mensagem;
 
@@ -777,6 +780,8 @@ acima de R$${item.minimo}
             // envia telegram
             // ======================================
 
+            console.log("Vai enviar ao Telegram");
+
             await bot.sendPhoto(
                 CANAL_ID,
                 path.join(__dirname, "imagem", "amazon.jpg"),
@@ -786,6 +791,7 @@ acima de R$${item.minimo}
                 }
             );
 
+            console.log("Enviado com sucesso");
             console.log(
                 "Campanha confirmada:",
                 codigo

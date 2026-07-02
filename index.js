@@ -735,8 +735,8 @@ async function monitorar(execucaoNome) {
                         `<b>Cupom AMAZON App</b>
 
 ${item.limite
-                            ? `✅ ${item.porcentagem}% até <b>R$${item.limite} OFF</b>`
-                            : `<b>✅ ${item.porcentagem}% OFF</b>`
+                            ? `${item.porcentagem}% até <b>R$${item.limite} OFF</b>`
+                            : `<b>${item.porcentagem}% OFF</b>`
                         } 🔑 <code>${item.codigo}</code>
 acima de R$${item.minimo}
 
@@ -747,7 +747,7 @@ acima de R$${item.minimo}
                     mensagem =
                         `<b>CUPOM AMAZON APP</b>
 
-<b>✅ R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>
+<b> R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>
 
 <b>🔗Teste no link: ${linkAmazon}</b>`;
                 }

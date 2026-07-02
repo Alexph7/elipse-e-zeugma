@@ -56,7 +56,7 @@ const MIN_LINKS = 6;
 const MAX_LINKS = 10;
 
 // mínimo para confirmar campanha global
-const QUORUM = 3;
+const QUORUM = 2;
 
 // timeout requests
 const REQUEST_TIMEOUT = 10000;
@@ -341,8 +341,7 @@ function obterModoAtual() {
         agora.format("m")
     );
 
-    // HORA CHEIA
-    // 08:00:00 -> 08:00:59 polling 5 segundos
+    // HORA CHEIA 08:00:00 -> 08:00:59 polling 5 segundos
     if (minuto === 0) {
 
         return {
@@ -352,9 +351,7 @@ function obterModoAtual() {
         };
     }
 
-    // PRE AQUECIMENTO
-    // xx:58 e xx:59 polling 10 segundos
-
+    // PRE AQUECIMENTO xx:58 e xx:59 polling 10 segundos
     if (
         minuto === 58 ||
         minuto === 59
@@ -367,9 +364,7 @@ function obterModoAtual() {
         };
     }
 
-    // POS AQUECIMENTO
-    // xx:01 e xx:02 polling 10 segundos
-
+    // POS AQUECIMENTO xx:01 e xx:02 polling 10 segundos
     if (
         minuto === 1 ||
         minuto === 2
@@ -382,8 +377,7 @@ function obterModoAtual() {
         };
     }
 
-    // ALEATORIOS
-    // 05 10 15 20 25... polling 5 segundos
+    // ALEATORIOS - 05 10 15 20 25... polling 5 segundos
     if (minuto % 5 === 0) {
 
         return {
@@ -422,18 +416,12 @@ function extrairCupons(html) {
     }
 
     // TERMOS COMPLETOS
-
     let match;
 
-    const regexTermos =
-        /Ganhe\s+(?:(\d+)%|R\$\s*([\d.,\u00A0]+))(?:\s+off)?\s+em\s+compras\s+(?:a\s+partir\s+de|acima\s+de)\s+R\$\s*([\d.,\u00A0]+)(?:\s+\(limitado\s+a\s+R\$\s*([\d.,\u00A0]+)\))?.*?Cupom\s+de\s+desconto:\s*<groupClaimCode>([A-Z0-9]+)<\/groupClaimCode>/gis;
+    const regexCupomCompleto =
+        /Ganhe\s+(?:(\d+)%|R\$\s*([\d.,]+))\s*off[\s\S]*?compras[\s\S]*?R\$\s*([\d.,]+)[\s\S]*?O benefício máximo que você pode receber com esta promoção é limitado a R\$\s*([\d.,]+)[\s\S]*?Cupom de desconto:\s*(?:<groupClaimCode>)?([A-Z0-9]+)(?:<\/groupClaimCode>)?/gi;
 
-    const regexCodigoFallback =
-        /<groupClaimCode>([A-Z0-9]+)<\/groupClaimCode>/gi;
-
-    while (
-        (match = regexTermos.exec(html)) !== null
-    ) {
+    while ((match = regexCupomCompleto.exec(html)) !== null) {
 
         encontrados.push({
 
@@ -445,11 +433,15 @@ function extrairCupons(html) {
 
             minimo: match[3],
 
-            limite: match[4] || null,
+            limite: match[4],
 
             codigo: match[5]
         });
     }
+
+    const regexCodigoFallback =
+        /<groupClaimCode>([A-Z0-9]+)<\/groupClaimCode>/gi;
+
 
     while (
         (match = regexCodigoFallback.exec(html)) !== null
@@ -553,7 +545,6 @@ async function analisarProduto(url, cachePromotions) {
                             }
                         );
 
-                    console.log("================================");
                     console.log("POPUP:", promo.id);
                     console.log(
                         popup.data
@@ -561,7 +552,6 @@ async function analisarProduto(url, cachePromotions) {
                             .slice(0, 5000)
                     );
 
-                    console.log("================================");
                     console.log("PROMO:", promo.id);
 
                     const resultadoRegex = popup.data.match(
@@ -570,7 +560,6 @@ async function analisarProduto(url, cachePromotions) {
 
                     console.log("TRECHO:");
                     console.log(resultadoRegex ? resultadoRegex[0] : "NÃO ENCONTROU");
-                    console.log("================================");
 
                     extras =
                         extrairCupons(
@@ -751,7 +740,7 @@ ${item.limite
                         } 🔑 <code>${item.codigo}</code>
 acima de R$${item.minimo}
 
-<b>🔗resgatavel em paginas: ${linkAmazon}</b>`;
+<b>🔗Teste no link: ${linkAmazon}</b>`;
 
                 } else {
                     const linkAmazon = obterProximoLinkAmazon();
@@ -760,7 +749,7 @@ acima de R$${item.minimo}
 
 <b>✅ R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>
 
-<b>🔗resgatavel em paginas: ${linkAmazon}</b>`;
+<b>🔗Teste no link: ${linkAmazon}</b>`;
                 }
 
             } else {

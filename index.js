@@ -36,6 +36,9 @@ const INDEX_FILE =
 const IMAGEM_INDEX_FILE =
     "./imagem-index.json";
 
+const AFILIADOS_FILE =
+    "./afiliacao.json";
+
 const httpAgent = new http.Agent({
     keepAlive: true,
     maxSockets: 20,
@@ -50,6 +53,7 @@ const httpsAgent = new https.Agent({
 
 let sentinelas = [];
 let STORES = {};
+let AFILIADOS = {};
 
 // CONFIG MONITORAMENTO
 const MIN_LINKS = 6;
@@ -223,6 +227,36 @@ function carregarStores() {
             STORES_FILE
         )
     );
+}
+
+function carregarAfiliados() {
+
+    if (!fs.existsSync(AFILIADOS_FILE)) {
+
+        console.log(
+            "afiliacao.json não encontrado."
+        );
+
+        return;
+    }
+
+    AFILIADOS = JSON.parse(
+        fs.readFileSync(AFILIADOS_FILE)
+    );
+}
+
+function obterLinkAfiliado(url) {
+
+    const asin =
+        url.match(
+            /\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i
+        )?.[1];
+
+    if (!asin) {
+        return url;
+    }
+
+    return AFILIADOS[asin] || url;
 }
 
 function extrairBlocosPromocao(html) {
@@ -718,12 +752,14 @@ async function monitorar(execucaoNome) {
                         )];
 
                     const linkAmazon =
-                        linksValidos[
-                        Math.floor(
-                            Math.random() *
-                            linksValidos.length
-                        )
-                        ];
+                        obterLinkAfiliado(
+                            linksValidos[
+                            Math.floor(
+                                Math.random() *
+                                linksValidos.length
+                            )
+                            ]
+                        );
 
                     mensagem =
                         `Cupom AMAZON App
@@ -732,10 +768,11 @@ ${item.limite
                             ? `${item.porcentagem}% até <b>R$${item.limite} OFF</b>`
                             : `<b>${item.porcentagem}% OFF</b>`
                         } 🔑 <code>${item.codigo}</code>
-${item.minimo ? `acima de R$${item.minimo}` : ""}
+${item.minimo ? `acima de R$${item.minimo}` : ""}${item.vendaTerceiros ? `
 
-${item.vendaTerceiros ? "vendedores terceiros (não Amazon)" : ""}
-<b>🔗Teste no link: ${linkAmazon}</b>`;
+vendedores terceiros (não Amazon)` : ""}
+
+<b>🔗 Resgate no link 👉: ${linkAmazon}</b>`;
 
                 } else {
 
@@ -745,18 +782,22 @@ ${item.vendaTerceiros ? "vendedores terceiros (não Amazon)" : ""}
                         )];
 
                     const linkAmazon =
-                        linksValidos[
-                        Math.floor(
-                            Math.random() *
-                            linksValidos.length
-                        )
-                        ];
+                        obterLinkAfiliado(
+                            linksValidos[
+                            Math.floor(
+                                Math.random() *
+                                linksValidos.length
+                            )
+                            ]
+                        );
                     mensagem =
                         `Cupom AMAZON App
 
-<b> R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>
+<b>R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>${item.vendaTerceiros ? `
 
-<b>🔗Teste no link: ${linkAmazon}</b>`;
+vendedores terceiros (não Amazon)` : ""}
+
+<b>🔗 Resgate no link 👉: ${linkAmazon}</b>`;
                 }
 
             } else {
@@ -1043,5 +1084,6 @@ setInterval(() => {
 sentinelas = carregarSentinelas();
 carregarCuponsPostados();
 carregarStores();
+carregarAfiliados();
 
 console.log(" BOT SENTINELAS INICIADO ");

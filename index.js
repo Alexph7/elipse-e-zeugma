@@ -439,6 +439,32 @@ function extrairCupons(html) {
         });
     }
 
+    // Se não encontrou nenhum cupom completo,
+    // tenta o modelo sem valor mínimo em R$
+    if (!encontrados.some(x => x.tipo === "cupomCompleto")) {
+
+        const regexCupomSemMinimo =
+            /Ganhe\s+(?:(\d+)%|R\$\s*([\d.,]+))\s*off[\s\S]*?O benefício máximo que você pode receber com esta promoção é limitado a R\$\s*([\d.,]+)[\s\S]*?Cupom de desconto:\s*(?:<groupClaimCode>)?([A-Z0-9]+)(?:<\/groupClaimCode>)?/gi;
+
+        while ((match = regexCupomSemMinimo.exec(html)) !== null) {
+
+            encontrados.push({
+
+                tipo: "cupomCompleto",
+
+                porcentagem: match[1] || null,
+
+                valorReais: match[2] || null,
+
+                minimo: null,
+
+                limite: match[3],
+
+                codigo: match[4]
+            });
+        }
+    }
+
     const regexCodigoFallback =
         /<groupClaimCode>([A-Z0-9]+)<\/groupClaimCode>/gi;
 
@@ -732,20 +758,20 @@ async function monitorar(execucaoNome) {
                         obterProximoLinkAmazon();
 
                     mensagem =
-                        `<b>Cupom AMAZON App</b>
+                        `Cupom AMAZON App
 
 ${item.limite
                             ? `${item.porcentagem}% até <b>R$${item.limite} OFF</b>`
                             : `<b>${item.porcentagem}% OFF</b>`
                         } 🔑 <code>${item.codigo}</code>
-acima de R$${item.minimo}
+${item.minimo ? `acima de R$${item.minimo}` : ""}
 
 <b>🔗Teste no link: ${linkAmazon}</b>`;
 
                 } else {
                     const linkAmazon = obterProximoLinkAmazon();
                     mensagem =
-                        `<b>CUPOM AMAZON APP</b>
+                        `Cupom AMAZON App
 
 <b> R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>
 

@@ -768,7 +768,7 @@ ${item.limite
                             ? `${item.porcentagem}% até <b>R$${item.limite} OFF</b>`
                             : `<b>${item.porcentagem}% OFF</b>`
                         } 🔑 <code>${item.codigo}</code>
-${item.minimo ? `acima de R$${item.minimo.replace(",", ".")}` : ""}
+${item.minimo ? `acima de R$${item.minimo.replace(/[.,]$/, "").replace(",", ".")}` : ""}
 
 ${item.vendaTerceiros ? `vendedores terceiros (não Amazon)
 ` : ""}<b>🔗 Resgate no link 👉: ${linkAmazon}</b>`;
@@ -792,7 +792,7 @@ ${item.vendaTerceiros ? `vendedores terceiros (não Amazon)
                     mensagem =
                         `Cupom AMAZON App
 
-<b>R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>
+<b>R$${item.valorReais} OFF</b> em R$${item.minimo.replace(/[.,]$/, "")} 🔑 <code>${item.codigo}</code>
 
 ${item.vendaTerceiros ? `vendedores terceiros (não Amazon)
 ` : ""}<b>🔗 Resgate no link 👉: ${linkAmazon}</b>`;

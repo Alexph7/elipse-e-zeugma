@@ -768,10 +768,10 @@ ${item.limite
                             ? `${item.porcentagem}% até <b>R$${item.limite} OFF</b>`
                             : `<b>${item.porcentagem}% OFF</b>`
                         } 🔑 <code>${item.codigo}</code>
-${item.minimo ? `acima de R$${item.minimo.replace(",", ".")}` : ""}${item.vendaTerceiros ? `
+${item.minimo ? `acima de R$${item.minimo.replace(",", ".")}` : ""}
 
-vendedores terceiros (não Amazon)` : ""}
-<b>🔗 Resgate no link 👉: ${linkAmazon}</b>`;
+${item.vendaTerceiros ? `vendedores terceiros (não Amazon)
+` : ""}<b>🔗 Resgate no link 👉: ${linkAmazon}</b>`;
 
                 } else {
 
@@ -792,10 +792,10 @@ vendedores terceiros (não Amazon)` : ""}
                     mensagem =
                         `Cupom AMAZON App
 
-<b>R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>${item.vendaTerceiros ? `
+<b>R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>
 
-vendedores terceiros (não Amazon)` : ""}
-<b>🔗 Resgate no link 👉: ${linkAmazon}</b>`;
+${item.vendaTerceiros ? `vendedores terceiros (não Amazon)
+` : ""}<b>🔗 Resgate no link 👉: ${linkAmazon}</b>`;
                 }
 
             } else {

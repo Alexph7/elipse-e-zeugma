@@ -768,7 +768,7 @@ ${item.limite
                             ? `${item.porcentagem}% até <b>R$${item.limite} OFF</b>`
                             : `<b>${item.porcentagem}% OFF</b>`
                         } 🔑 <code>${item.codigo}</code>
-${item.minimo ? `acima de R$${item.minimo}` : ""}${item.vendaTerceiros ? `
+${item.minimo ? `acima de R$${item.minimo.replace(",", ".")}` : ""}${item.vendaTerceiros ? `
 
 vendedores terceiros (não Amazon)` : ""}
 <b>🔗 Resgate no link 👉: ${linkAmazon}</b>`;

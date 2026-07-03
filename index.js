@@ -77,25 +77,7 @@ function agoraSP() {
     return moment().tz("America/Sao_Paulo");
 }
 
-function carregarAmazonIndex() {
 
-    if (!fs.existsSync(INDEX_FILE)) {
-        return 0;
-    }
-
-    try {
-
-        const dados = JSON.parse(
-            fs.readFileSync(INDEX_FILE)
-        );
-
-        return Number(dados.index) || 0;
-
-    } catch {
-
-        return 0;
-    }
-}
 
 function carregarImagemIndex() {
 
@@ -117,20 +99,6 @@ function carregarImagemIndex() {
     }
 }
 
-function salvarAmazonIndex() {
-
-    fs.writeFileSync(
-        INDEX_FILE,
-        JSON.stringify(
-            {
-                index: amazonLinkIndex
-            },
-            null,
-            2
-        )
-    );
-}
-
 function salvarImagemIndex() {
 
     fs.writeFileSync(
@@ -145,38 +113,8 @@ function salvarImagemIndex() {
     );
 }
 
-let amazonLinkIndex =
-    carregarAmazonIndex();
-
 let imagemIndex =
     carregarImagemIndex();
-
-function obterProximoLinkAmazon() {
-
-    if (
-        !STORES.A ||
-        !Array.isArray(STORES.A.links) ||
-        !STORES.A.links.length
-    ) {
-
-        return "https://amazon.com.br";
-    }
-
-    amazonLinkIndex =
-        amazonLinkIndex %
-        STORES.A.links.length;
-
-    const link =
-        STORES.A.links[amazonLinkIndex];
-
-    amazonLinkIndex =
-        (amazonLinkIndex + 1) %
-        STORES.A.links.length;
-
-    salvarAmazonIndex();
-
-    return link;
-}
 
 function obterProximaImagem() {
 
@@ -626,14 +564,19 @@ async function analisarProduto(url, cachePromotions) {
                     );
                 }
                 // mantém apenas cupons reais
-                cupons.push(
+                for (const extra of extras) {
 
-                    ...extras.filter(
-                        x =>
-                            x.tipo === "cupomCompleto" ||
-                            x.tipo === "codigoFallback"
-                    )
-                );
+                    if (
+                        extra.tipo === "cupomCompleto" ||
+                        extra.tipo === "codigoFallback"
+                    ) {
+
+                        cupons.push({
+                            ...extra,
+                            url
+                        });
+                    }
+                }
             } catch (err) {
 
                 console.log(
@@ -691,6 +634,7 @@ async function monitorar(execucaoNome) {
         // quorum
         const contador = {};
         const detalhes = {};
+        const linksPorCupom = {};
 
         for (const lista of resultados) {
             // evita repetir no mesmo html
@@ -715,6 +659,12 @@ async function monitorar(execucaoNome) {
                     (contador[chave] || 0) + 1;
 
                 detalhes[chave] = item;
+
+                if (!linksPorCupom[chave]) {
+                    linksPorCupom[chave] = [];
+                }
+
+                linksPorCupom[chave].push(item.url);
             }
         }
 
@@ -761,8 +711,19 @@ async function monitorar(execucaoNome) {
             ) {
 
                 if (item.porcentagem) {
+
+                    const linksValidos =
+                        [...new Set(
+                            linksPorCupom[codigo] || []
+                        )];
+
                     const linkAmazon =
-                        obterProximoLinkAmazon();
+                        linksValidos[
+                        Math.floor(
+                            Math.random() *
+                            linksValidos.length
+                        )
+                        ];
 
                     mensagem =
                         `Cupom AMAZON App
@@ -777,7 +738,19 @@ ${item.vendaTerceiros ? "vendedores terceiros (não Amazon)" : ""}
 <b>🔗Teste no link: ${linkAmazon}</b>`;
 
                 } else {
-                    const linkAmazon = obterProximoLinkAmazon();
+
+                    const linksValidos =
+                        [...new Set(
+                            linksPorCupom[codigo] || []
+                        )];
+
+                    const linkAmazon =
+                        linksValidos[
+                        Math.floor(
+                            Math.random() *
+                            linksValidos.length
+                        )
+                        ];
                     mensagem =
                         `Cupom AMAZON App
 

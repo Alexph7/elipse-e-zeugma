@@ -771,7 +771,6 @@ ${item.limite
 ${item.minimo ? `acima de R$${item.minimo}` : ""}${item.vendaTerceiros ? `
 
 vendedores terceiros (não Amazon)` : ""}
-
 <b>🔗 Resgate no link 👉: ${linkAmazon}</b>`;
 
                 } else {
@@ -796,7 +795,6 @@ vendedores terceiros (não Amazon)` : ""}
 <b>R$${item.valorReais} OFF</b> em R$${item.minimo} 🔑 <code>${item.codigo}</code>${item.vendaTerceiros ? `
 
 vendedores terceiros (não Amazon)` : ""}
-
 <b>🔗 Resgate no link 👉: ${linkAmazon}</b>`;
                 }
 

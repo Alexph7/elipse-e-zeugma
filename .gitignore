@@ -1,6 +1,6 @@
 node_modules
 .env
-amazon-index.json
 cupons-postados.json
 imagem-index.json
 sentinelas.json
+afiliacao.json

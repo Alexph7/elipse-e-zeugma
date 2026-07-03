@@ -397,6 +397,9 @@ function extrairCupons(html) {
 
     const encontrados = [];
 
+    const vendaTerceiros =
+        /produtos vendidos por vendedores terceiros/i.test(html);
+
     // PROMOTION IDS
     const regexPromotion =
         /promotion\/details\/popup\/([A-Z0-9]+)/gi;
@@ -435,7 +438,9 @@ function extrairCupons(html) {
 
             limite: match[4],
 
-            codigo: match[5]
+            codigo: match[5],
+
+            vendaTerceiros
         });
     }
 
@@ -460,7 +465,9 @@ function extrairCupons(html) {
 
                 limite: match[3],
 
-                codigo: match[4]
+                codigo: match[4],
+
+                vendaTerceiros
             });
         }
     }
@@ -766,6 +773,7 @@ ${item.limite
                         } 🔑 <code>${item.codigo}</code>
 ${item.minimo ? `acima de R$${item.minimo}` : ""}
 
+${item.vendaTerceiros ? "vendedores terceiros (não Amazon)" : ""}
 <b>🔗Teste no link: ${linkAmazon}</b>`;
 
                 } else {

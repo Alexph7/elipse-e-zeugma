@@ -394,7 +394,7 @@ function extrairCupons(html) {
     let match;
 
     const regexCupomCompleto =
-        /Ganhe\s+(?:(\d+)%|(?:R\$)?\s*([\d.,]+))\s*off[\s\S]*?compras[\s\S]{0,100}?R\$\s*([\d.,]+)[\s\S]*?O benefício máximo que você pode receber com esta promoção é limitado a\s*(?:R\$)?\s*([\d.,]+)[\s\S]*?Cupom de desconto:\s*(?:<groupClaimCode>)?([A-Z0-9]+)(?:<\/groupClaimCode>)?/gi;
+        /Ganhe\s+(?:(\d+)%|(?:R\$)?\s*([\d.,]+))(?:\s*off)?[\s\S]*?compras[\s\S]{0,100}?R\$\s*([\d.,]+)[\s\S]*?O benefício máximo que você pode receber com esta promoção é limitado a\s*(?:R\$)?\s*([\d.,]+)[\s\S]*?Cupom de desconto:\s*(?:<groupClaimCode>)?([A-Z0-9]+)(?:<\/groupClaimCode>)?/gi;
 
     while ((match = regexCupomCompleto.exec(html)) !== null) {
 
@@ -421,7 +421,7 @@ function extrairCupons(html) {
     if (!encontrados.some(x => x.tipo === "cupomCompleto")) {
 
         const regexCupomSemMinimo =
-            /Ganhe\s+(?:(\d+)%|(?:R\$)?\s*([\d.,]+))\s*off[\s\S]*?O benefício máximo que você pode receber com esta promoção é limitado a\s*(?:R\$)?\s*([\d.,]+)[\s\S]*?Cupom de desconto:\s*(?:<groupClaimCode>)?([A-Z0-9]+)(?:<\/groupClaimCode>)?/gi;
+            /Ganhe\s+(?:(\d+)%|(?:R\$)?\s*([\d.,]+))(?:\s*off)?[\s\S]*?O benefício máximo que você pode receber com esta promoção é limitado a\s*(?:R\$)?\s*([\d.,]+)[\s\S]*?Cupom de desconto:\s*(?:<groupClaimCode>)?([A-Z0-9]+)(?:<\/groupClaimCode>)?/gi;
 
         while ((match = regexCupomSemMinimo.exec(html)) !== null) {
 

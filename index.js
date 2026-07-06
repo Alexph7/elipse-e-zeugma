@@ -60,7 +60,7 @@ const MIN_LINKS = 6;
 const MAX_LINKS = 10;
 
 // mínimo para confirmar campanha global
-const QUORUM = 2;
+const QUORUM = 1;
 
 // timeout requests
 const REQUEST_TIMEOUT = 10000;

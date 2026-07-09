@@ -771,7 +771,9 @@ ${item.limite
 ${item.minimo ? `acima de R$${item.minimo.replace(/[.,]$/, "").replace(",", ".")}` : ""}
 
 ${item.vendaTerceiros ? `vendedores terceiros (não Amazon)
-` : ""}<b>🔗 Resgate no link 👉: ${linkAmazon}</b>`;
+` : ""}<b>🔗 Resgate no link 👉: ${linkAmazon}</b>
+
+# Anuncio @paradoxopromos`;
 
                 } else {
 
@@ -795,7 +797,9 @@ ${item.vendaTerceiros ? `vendedores terceiros (não Amazon)
 <b>R$${item.valorReais} OFF</b> em R$${item.minimo.replace(/[.,]$/, "")} 🔑 <code>${item.codigo}</code>
 
 ${item.vendaTerceiros ? `vendedores terceiros (não Amazon)
-` : ""}<b>🔗 Resgate no link 👉: ${linkAmazon}</b>`;
+` : ""}<b>🔗 Resgate no link 👉: ${linkAmazon}</b>
+
+# Anuncio @paradoxopromos`;
                 }
 
             } else {

@@ -798,7 +798,6 @@ ${item.vendaTerceiros ? `vendedores terceiros (não Amazon)
 
 ${item.vendaTerceiros ? `vendedores terceiros (não Amazon)
 ` : ""}<b>🔗 Resgate no link 👉: ${linkAmazon}</b>
-
 # Anuncio @paradoxopromos`;
                 }
 

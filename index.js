@@ -255,7 +255,6 @@ function obterLinkAfiliado(url) {
     if (!asin) {
         return url;
     }
-
     return AFILIADOS[asin] || url;
 }
 
@@ -263,11 +262,7 @@ function extrairBlocosPromocao(html) {
 
     // pega apenas blocos que contenham promotion popup
     // reduz MUITO o html processado
-    const matches = html.match(
-
-        /<div[^>]*>[\s\S]*?promotion\/details\/popup\/[A-Z0-9]+[\s\S]*?<\/div>/gi
-
-    );
+    const matches = html.match(/<div[^>]*>[\s\S]*?promotion\/details\/popup\/[A-Z0-9]+[\s\S]*?<\/div>/gi);
 
     if (!matches) {
         return "";
@@ -368,14 +363,10 @@ function obterModoAtual() {
 function extrairCupons(html) {
 
     const encontrados = [];
-
     const vendaTerceiros =
         /produtos vendidos por vendedores terceiros/i.test(html);
-
-    // PROMOTION IDS
     const regexPromotion =
         /promotion\/details\/popup\/([A-Z0-9]+)/gi;
-
     let promotionMatch;
 
     while (
@@ -383,35 +374,25 @@ function extrairCupons(html) {
     ) {
 
         encontrados.push({
-
             tipo: "promotion",
-
             id: promotionMatch[1]
         });
     }
 
     // TERMOS COMPLETOS
     let match;
-
     const regexCupomCompleto =
         /Ganhe\s+(?:(\d+)%|(?:R\$)?\s*([\d.,]+))(?:\s*off)?[\s\S]*?compras[\s\S]{0,100}?R\$\s*([\d.,]+)[\s\S]*?O benefício máximo que você pode receber com esta promoção é limitado a\s*(?:R\$)?\s*([\d.,]+)[\s\S]*?Cupom de desconto:\s*(?:<groupClaimCode>)?([A-Z0-9]+)(?:<\/groupClaimCode>)?/gi;
 
     while ((match = regexCupomCompleto.exec(html)) !== null) {
 
         encontrados.push({
-
             tipo: "cupomCompleto",
-
             porcentagem: match[1] || null,
-
             valorReais: match[2] || null,
-
             minimo: match[3],
-
             limite: match[4],
-
             codigo: match[5],
-
             vendaTerceiros
         });
     }
@@ -426,19 +407,12 @@ function extrairCupons(html) {
         while ((match = regexCupomSemMinimo.exec(html)) !== null) {
 
             encontrados.push({
-
                 tipo: "cupomCompleto",
-
                 porcentagem: match[1] || null,
-
                 valorReais: match[2] || null,
-
                 minimo: null,
-
                 limite: match[3],
-
                 codigo: match[4],
-
                 vendaTerceiros
             });
         }
@@ -447,22 +421,17 @@ function extrairCupons(html) {
     const regexCodigoFallback =
         /<groupClaimCode>([A-Z0-9]+)<\/groupClaimCode>/gi;
 
-
     while (
         (match = regexCodigoFallback.exec(html)) !== null
     ) {
-
         encontrados.push({
-
             tipo: "codigoFallback",
-
             codigo: match[1]
         });
     }
     return encontrados;
 }
 
-// REQUEST PRODUTO
 async function analisarProduto(url, cachePromotions) {
 
     try {
@@ -471,9 +440,7 @@ async function analisarProduto(url, cachePromotions) {
 
             httpAgent,
             httpsAgent,
-
             timeout: REQUEST_TIMEOUT,
-
             headers: {
 
                 "user-agent":
@@ -509,7 +476,6 @@ async function analisarProduto(url, cachePromotions) {
             new Set();
         // cupons finais
         const cupons = [];
-
         // abre popup termos
         for (const promo of promotions) {
 
@@ -533,9 +499,7 @@ async function analisarProduto(url, cachePromotions) {
                             {
                                 httpAgent,
                                 httpsAgent,
-
                                 timeout: REQUEST_TIMEOUT,
-
                                 headers: {
 
                                     "user-agent":
@@ -566,10 +530,7 @@ async function analisarProduto(url, cachePromotions) {
                     console.log("TRECHO:");
                     console.log(resultadoRegex ? resultadoRegex[0] : "NÃO ENCONTROU");
 
-                    extras =
-                        extrairCupons(
-                            popup.data
-                        );
+                    extras = extrairCupons(popup.data);
 
                     console.log("================================");
                     console.log("PROMO:", promo.id);
@@ -599,12 +560,10 @@ async function analisarProduto(url, cachePromotions) {
                 }
                 // mantém apenas cupons reais
                 for (const extra of extras) {
-
                     if (
                         extra.tipo === "cupomCompleto" ||
                         extra.tipo === "codigoFallback"
                     ) {
-
                         cupons.push({
                             ...extra,
                             url
@@ -612,11 +571,7 @@ async function analisarProduto(url, cachePromotions) {
                     }
                 }
             } catch (err) {
-
-                console.log(
-                    "Erro popup:",
-                    promo.id
-                );
+                console.log("Erro popup:", promo.id);
             }
         }
         return cupons;
@@ -738,7 +693,6 @@ async function monitorar(execucaoNome) {
 
             let mensagem;
 
-            // CUPOM COMPLETO
             if (
                 item &&
                 item.tipo === "cupomCompleto"
@@ -772,7 +726,6 @@ ${item.minimo ? `acima de R$${item.minimo.replace(/[.,]$/, "").replace(",", ".")
 
 ${item.vendaTerceiros ? `vendedores terceiros (não Amazon)
 ` : ""}<b>🔗 Resgate no link 👉: ${linkAmazon}</b>
-
 # Anuncio @paradoxopromos`;
 
                 } else {

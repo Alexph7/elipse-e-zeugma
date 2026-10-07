@@ -77,6 +77,80 @@ const cuponsPostados = new Map();
 const cuponsDesaparecidos = new Map();
 const CICLOS_DESAPARECIMENTO = 3;
 
+const MAX_TENTATIVAS_POPUP = 10;
+
+// se as 10 tentativas falharem,
+// espera 30 minutos antes de tentar esse ID novamente
+const COOLDOWN_POPUP_MS = 30 * 60 * 1000;
+
+// cache global:
+// promotion ID -> extras extraídos do popup
+const cachePromotions = new Map();
+
+// promotion ID -> {
+//     tentativas,
+//     bloqueadoAte
+// }
+const controlePopups = new Map();
+
+// código do cupom -> Set de promotion IDs
+const promotionsPorCodigo = new Map();
+
+// para popup que abriu com sucesso,
+// mas não entregou nenhum cupom útil.
+// Depois de 30 minutos pode ser lido novamente.
+const cacheVazioAte = new Map();
+
+
+function associarPromotionAosCodigos(promotionId, extras) {
+
+    for (const extra of extras) {
+
+        if (!extra.codigo) {
+            continue;
+        }
+
+        if (!promotionsPorCodigo.has(extra.codigo)) {
+
+            promotionsPorCodigo.set(
+                extra.codigo,
+                new Set()
+            );
+        }
+
+        promotionsPorCodigo
+            .get(extra.codigo)
+            .add(promotionId);
+    }
+}
+
+
+function limparCachePromotionDoCodigo(codigo) {
+
+    const promotionIds =
+        promotionsPorCodigo.get(codigo);
+
+    if (!promotionIds) {
+        return;
+    }
+
+    for (const promotionId of promotionIds) {
+
+        console.log(
+            "LIMPANDO CACHE PROMOTION:",
+            promotionId,
+            "| cupom:",
+            codigo
+        );
+
+        cachePromotions.delete(promotionId);
+        controlePopups.delete(promotionId);
+        cacheVazioAte.delete(promotionId);
+    }
+
+    promotionsPorCodigo.delete(codigo);
+}
+
 function agoraSP() {
     return moment().tz("America/Sao_Paulo");
 }
@@ -487,7 +561,106 @@ async function analisarProduto(url, cachePromotions) {
 
                 let extras = cachePromotions.get(promo.id);
 
+
+                // --------------------------------
+                // CACHE VAZIO TEMPORÁRIO
+                // --------------------------------
+
+                if (
+                    extras !== undefined &&
+                    extras.length === 0
+                ) {
+
+                    const expira =
+                        cacheVazioAte.get(promo.id) || 0;
+
+                    if (Date.now() >= expira) {
+
+                        cachePromotions.delete(promo.id);
+                        cacheVazioAte.delete(promo.id);
+
+                        extras = undefined;
+                    }
+                }
+
+
                 if (extras === undefined) {
+
+                    // --------------------------------
+                    // CONTROLE DE TENTATIVAS DO POPUP
+                    // --------------------------------
+
+                    const agora = Date.now();
+
+                    let controle =
+                        controlePopups.get(promo.id);
+
+
+                    // cooldown terminou:
+                    // começa novamente do zero
+                    if (
+                        controle &&
+                        controle.bloqueadoAte &&
+                        controle.bloqueadoAte <= agora
+                    ) {
+
+                        controlePopups.delete(promo.id);
+                        controle = undefined;
+                    }
+
+
+                    // ainda está bloqueado
+                    if (
+                        controle &&
+                        controle.bloqueadoAte > agora
+                    ) {
+
+                        console.log(
+                            "POPUP EM COOLDOWN:",
+                            promo.id,
+                            "| tentativas:",
+                            controle.tentativas
+                        );
+
+                        continue;
+                    }
+
+
+                    if (!controle) {
+
+                        controle = {
+                            tentativas: 0,
+                            bloqueadoAte: 0
+                        };
+
+                        controlePopups.set(
+                            promo.id,
+                            controle
+                        );
+                    }
+
+
+                    controle.tentativas++;
+
+
+                    console.log(
+                        "TENTATIVA POPUP:",
+                        promo.id,
+                        `${controle.tentativas}/${MAX_TENTATIVAS_POPUP}`
+                    );
+
+
+                    // a 10ª ainda é executada.
+                    // As próximas ficam bloqueadas.
+                    if (
+                        controle.tentativas >=
+                        MAX_TENTATIVAS_POPUP
+                    ) {
+
+                        controle.bloqueadoAte =
+                            agora + COOLDOWN_POPUP_MS;
+                    }
+
 
                     const popup =
                         await axios.get(
@@ -550,11 +723,40 @@ async function analisarProduto(url, cachePromotions) {
                             2
                         )
                     );
-                    // salva no cache
+                    // popup respondeu com sucesso.
+                    // zera o controle de erros/tentativas.
+                    controlePopups.delete(promo.id);
+
+
+                    // salva resultado do popup
                     cachePromotions.set(
                         promo.id,
                         extras
                     );
+
+
+                    // se encontrou códigos,
+                    // liga código <-> promotion ID
+                    if (extras.some(x => x.codigo)) {
+
+                        cacheVazioAte.delete(promo.id);
+
+                        associarPromotionAosCodigos(
+                            promo.id,
+                            extras
+                        );
+
+                    } else {
+
+                        // popup abriu, mas não trouxe
+                        // nenhum cupom utilizável.
+                        // evita ficar abrindo novamente
+                        // durante 30 minutos.
+                        cacheVazioAte.set(
+                            promo.id,
+                            Date.now() + COOLDOWN_POPUP_MS
+                        );
+                    }
                 }
                 // mantém apenas cupons reais
                 for (const extra of extras) {
@@ -610,8 +812,6 @@ async function monitorar(execucaoNome) {
     monitorandoAgora = true;
 
     try {
-
-        const cachePromotions = new Map();
 
         if (!sentinelas.length) {
 
@@ -1044,6 +1244,7 @@ setInterval(() => {
             cuponsPostados.delete(codigo);
             cuponsDesaparecidos.delete(codigo);
             salvarCuponsPostados();
+            limparCachePromotionDoCodigo(codigo);
         }
     }
 

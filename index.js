@@ -507,6 +507,48 @@ function extrairCupons(html) {
     return encontrados;
 }
 
+function extrairCuponsDosTermos(html) {
+    const trechos = [];
+    const regexTnc = /"TNC_CONTENT"\s*:\s*("(?:\\.|[^"\\])*")/g;
+    let match;
+
+    // Termos guardados em um campo TNC_CONTENT dentro de script.
+    while ((match = regexTnc.exec(html)) !== null) {
+        try {
+            trechos.push(JSON.parse(match[1]));
+        } catch {
+            // Continua com o HTML visível.
+        }
+    }
+
+    // Texto exibido na página completa.
+    trechos.push(
+        html
+            .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+            .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+            .replace(/<[^>]*>/g, " ")
+    );
+
+    // Também tenta o conteúdo bruto, útil para o popup atual.
+    trechos.push(html);
+
+    for (const trecho of trechos) {
+        const texto = trecho
+            .replace(/&nbsp;|&#160;|&#xA0;/gi, " ")
+            .replace(/\s+/g, " ");
+
+        const cupons = extrairCupons(texto).filter(
+            item => item.tipo === "cupomCompleto" && item.codigo
+        );
+
+        if (cupons.length) {
+            return cupons;
+        }
+    }
+
+    return [];
+}
+
 async function obterExtrasPromotion(id, cachePromotions) {
     if (cachePromotions.has(id)) {
         return cachePromotions.get(id);
@@ -519,59 +561,85 @@ async function obterExtrasPromotion(id, cachePromotions) {
             return registro.extras;
         }
 
-        const popup = await axios.get(
-            `https://www.amazon.com.br/promotion/details/popup/${id}`,
-            {
-                httpAgent,
-                httpsAgent,
-                timeout: REQUEST_TIMEOUT,
-                headers: {
-                    "user-agent": "Mozilla/5.0",
-                    "accept-language": "pt-BR,pt;q=0.9",
-                    "accept-encoding": "gzip, deflate, br"
-                }
+        const opcoes = {
+            httpAgent,
+            httpsAgent,
+            timeout: REQUEST_TIMEOUT,
+            headers: {
+                "user-agent": "Mozilla/5.0",
+                "accept-language": "pt-BR,pt;q=0.9",
+                "accept-encoding": "gzip, deflate, br"
             }
-        );
+        };
 
-        if (popup.status !== 200 || typeof popup.data !== "string") {
-            return [];
-        }
+        let cupons = [];
+        let origem = "popup";
 
-        const textoPopup = popup.data
-            .replace(/<[^>]*>/g, " ")
-            .replace(/&nbsp;|&#160;|&#xA0;/gi, " ")
-            .replace(/\s+/g, " ");
+        // Primeira fonte: popup atual.
+        try {
+            const popup = await axios.get(
+                `https://www.amazon.com.br/promotion/details/popup/${id}`,
+                opcoes
+            );
 
-        const extras = extrairCupons(textoPopup);
-
-        if (!extras.some(x => x.tipo === "cupomCompleto")) {
-            extras.push(...extrairCupons(popup.data));
-        }
-
-        const cuponsExtraidos = extras.filter(extra =>
-            extra.tipo === "cupomCompleto" && extra.codigo
-        );
-
-        if (cuponsExtraidos.length) {
-            historicoPromotions.set(id, {
-                sucessos: Math.min(
-                    LIMITE_ABERTURAS_PROMOTION,
-                    (registro?.sucessos || 0) + 1
-                ),
-                extras,
-                codigosPostados: registro?.codigosPostados || []
-            });
-
-            salvarHistoricoPromotions();
-
+            if (popup.status === 200 && typeof popup.data === "string") {
+                cupons = extrairCuponsDosTermos(popup.data);
+            }
+        } catch (err) {
             console.log(
-                "Popup extraído:",
+                "Erro popup:",
                 id,
-                `${historicoPromotions.get(id).sucessos}/${LIMITE_ABERTURAS_PROMOTION}`
+                err.response?.status || err.message
             );
         }
 
-        return extras;
+        // Segunda fonte: página completa dos termos.
+        if (!cupons.length) {
+            try {
+                const pagina = await axios.get(
+                    `https://www.amazon.com.br/promotion/details/${id}`,
+                    opcoes
+                );
+
+                if (pagina.status === 200 && typeof pagina.data === "string") {
+                    cupons = extrairCuponsDosTermos(pagina.data);
+                    origem = "pagina";
+                }
+            } catch (err) {
+                console.log(
+                    "Erro página de termos:",
+                    id,
+                    err.response?.status || err.message
+                );
+            }
+        }
+
+        if (!cupons.length) {
+            console.log("Nenhum cupom completo extraído:", id);
+            return [];
+        }
+
+        historicoPromotions.set(id, {
+            sucessos: Math.min(
+                LIMITE_ABERTURAS_PROMOTION,
+                (registro?.sucessos || 0) + 1
+            ),
+            extras: cupons,
+            codigosPostados: registro?.codigosPostados || []
+        });
+
+        salvarHistoricoPromotions();
+
+        console.log(
+            "Cupom extraído:",
+            id,
+            "origem:",
+            origem,
+            "sucessos:",
+            historicoPromotions.get(id).sucessos
+        );
+
+        return cupons;
     })();
 
     cachePromotions.set(id, tarefa);

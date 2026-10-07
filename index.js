@@ -27,6 +27,9 @@ const ARQUIVO_SENTINELAS = "./sentinelas.json";
 const ARQUIVO_CUPONS =
     "./cupons-postados.json";
 
+const ARQUIVO_PROMOTIONS = "./promotion-aberturas.json";
+const LIMITE_ABERTURAS_PROMOTION = 10;
+
 const STORES_FILE =
     "./stores.json";
 
@@ -75,6 +78,7 @@ let ultimoContadorGlobal = {};
 // codigo -> timestamp
 const cuponsPostados = new Map();
 const cuponsDesaparecidos = new Map();
+const historicoPromotions = new Map();
 const CICLOS_DESAPARECIMENTO = 3;
 
 function agoraSP() {
@@ -209,6 +213,79 @@ function carregarCuponsPostados() {
             dados[codigo]
         );
     }
+}
+
+function salvarHistoricoPromotions() {
+    fs.writeFileSync(
+        ARQUIVO_PROMOTIONS,
+        JSON.stringify(Object.fromEntries(historicoPromotions), null, 2)
+    );
+}
+
+function carregarHistoricoPromotions() {
+    if (!fs.existsSync(ARQUIVO_PROMOTIONS)) return;
+
+    try {
+        const dados = JSON.parse(
+            fs.readFileSync(ARQUIVO_PROMOTIONS, "utf8")
+        );
+
+        for (const [id, registro] of Object.entries(dados)) {
+            if (!registro || !Array.isArray(registro.extras)) continue;
+
+            const codigosPostados = Array.isArray(registro.codigosPostados)
+                ? registro.codigosPostados
+                : [];
+
+            if (codigosPostados.some(codigo => !cuponsPostados.has(codigo))) {
+                continue;
+            }
+
+            historicoPromotions.set(id, {
+                sucessos: Math.min(
+                    LIMITE_ABERTURAS_PROMOTION,
+                    Math.max(0, Number(registro.sucessos) || 0)
+                ),
+                extras: registro.extras,
+                codigosPostados
+            });
+        }
+    } catch (err) {
+        console.log("Erro ao carregar contagem dos popups:", err.message);
+    }
+}
+
+function marcarPromotionPostada(codigo) {
+    let alterou = false;
+
+    for (const registro of historicoPromotions.values()) {
+        if (
+            registro.extras.some(extra => extra.codigo === codigo) &&
+            !registro.codigosPostados.includes(codigo)
+        ) {
+            registro.codigosPostados.push(codigo);
+            alterou = true;
+        }
+    }
+
+    if (alterou) salvarHistoricoPromotions();
+}
+
+function limparContagemDoCupom(codigo) {
+    let alterou = false;
+
+    for (const [id, registro] of historicoPromotions) {
+        if (
+            registro.extras.some(extra => extra.codigo === codigo) ||
+            registro.codigosPostados.includes(codigo)
+        ) {
+            historicoPromotions.delete(id);
+            alterou = true;
+            console.log("Contagem reiniciada para promotion:", id);
+        }
+    }
+
+    if (alterou) salvarHistoricoPromotions();
 }
 
 function carregarStores() {
@@ -430,6 +507,68 @@ function extrairCupons(html) {
     return encontrados;
 }
 
+async function obterExtrasPromotion(id, cachePromotions) {
+    if (cachePromotions.has(id)) {
+        return cachePromotions.get(id);
+    }
+
+    const tarefa = (async () => {
+        const registro = historicoPromotions.get(id);
+
+        if (registro?.sucessos >= LIMITE_ABERTURAS_PROMOTION) {
+            return registro.extras;
+        }
+
+        const popup = await axios.get(
+            `https://www.amazon.com.br/promotion/details/popup/${id}`,
+            {
+                httpAgent,
+                httpsAgent,
+                timeout: REQUEST_TIMEOUT,
+                headers: {
+                    "user-agent": "Mozilla/5.0",
+                    "accept-language": "pt-BR,pt;q=0.9",
+                    "accept-encoding": "gzip, deflate, br"
+                }
+            }
+        );
+
+        if (popup.status !== 200 || typeof popup.data !== "string") {
+            return [];
+        }
+
+        const extras = extrairCupons(popup.data);
+
+        const cuponsExtraidos = extras.filter(extra =>
+            extra.tipo === "cupomCompleto" && extra.codigo
+        );
+
+        if (cuponsExtraidos.length) {
+            historicoPromotions.set(id, {
+                sucessos: Math.min(
+                    LIMITE_ABERTURAS_PROMOTION,
+                    (registro?.sucessos || 0) + 1
+                ),
+                extras,
+                codigosPostados: registro?.codigosPostados || []
+            });
+
+            salvarHistoricoPromotions();
+
+            console.log(
+                "Popup extraído:",
+                id,
+                `${historicoPromotions.get(id).sucessos}/${LIMITE_ABERTURAS_PROMOTION}`
+            );
+        }
+
+        return extras;
+    })();
+
+    cachePromotions.set(id, tarefa);
+    return tarefa;
+}
+
 async function analisarProduto(url, cachePromotions) {
 
     try {
@@ -485,77 +624,7 @@ async function analisarProduto(url, cachePromotions) {
             promotionsVistas.add(promo.id);
             try {
 
-                let extras = cachePromotions.get(promo.id);
-
-                if (extras === undefined) {
-
-                    const popup =
-                        await axios.get(
-
-                            `https://www.amazon.com.br/promotion/details/popup/${promo.id}`,
-
-                            {
-                                httpAgent,
-                                httpsAgent,
-                                timeout: REQUEST_TIMEOUT,
-                                headers: {
-
-                                    "user-agent":
-                                        "Mozilla/5.0",
-
-                                    "accept-language":
-                                        "pt-BR,pt;q=0.9",
-
-                                    "accept-encoding":
-                                        "gzip, deflate, br"
-                                }
-                            }
-                        );
-
-                    console.log("POPUP:", promo.id);
-                    console.log(
-                        popup.data
-                            .replace(/\s+/g, " ")
-                            .slice(0, 5000)
-                    );
-
-                    console.log("PROMO:", promo.id);
-
-                    const resultadoRegex = popup.data.match(
-                        /Ganhe[\s\S]{0,500}Cupom[\s\S]{0,200}/i
-                    );
-
-                    console.log("TRECHO:");
-                    console.log(resultadoRegex ? resultadoRegex[0] : "NÃO ENCONTROU");
-
-                    extras = extrairCupons(popup.data);
-
-                    console.log("================================");
-                    console.log("PROMO:", promo.id);
-                    console.log("EXTRAS:");
-                    console.log(JSON.stringify(extras, null, 2));
-                    console.log("================================");
-
-                    if (promo.id === "A18BVK047WQ0HR") {
-                        console.log(
-                            popup.data.match(/<groupClaimCode>(.*?)<\/groupClaimCode>/i)
-                        );
-                    }
-
-                    console.log("EXTRAS EXTRAIDOS:", promo.id);
-                    console.log(
-                        JSON.stringify(
-                            extras,
-                            null,
-                            2
-                        )
-                    );
-                    // salva no cache
-                    cachePromotions.set(
-                        promo.id,
-                        extras
-                    );
-                }
+                const extras = await obterExtrasPromotion(promo.id, cachePromotions);
                 // mantém apenas cupons reais
                 for (const extra of extras) {
                     if (
@@ -682,6 +751,7 @@ async function monitorar(execucaoNome) {
             );
 
             salvarCuponsPostados();
+            marcarPromotionPostada(codigo);
 
             const item = detalhes[codigo];
 
@@ -1026,6 +1096,7 @@ setInterval(() => {
             );
 
             cuponsPostados.delete(codigo);
+            limparContagemDoCupom(codigo);
             cuponsDesaparecidos.delete(codigo);
             salvarCuponsPostados();
         }
@@ -1035,6 +1106,7 @@ setInterval(() => {
 
 sentinelas = carregarSentinelas();
 carregarCuponsPostados();
+carregarHistoricoPromotions();
 carregarStores();
 carregarAfiliados();
 

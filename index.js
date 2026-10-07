@@ -81,8 +81,6 @@ function agoraSP() {
     return moment().tz("America/Sao_Paulo");
 }
 
-
-
 function carregarImagemIndex() {
 
     if (!fs.existsSync(IMAGEM_INDEX_FILE)) {
@@ -571,7 +569,23 @@ async function analisarProduto(url, cachePromotions) {
                     }
                 }
             } catch (err) {
-                console.log("Erro popup:", promo.id);
+                console.log(
+                    "Erro popup:",
+                    promo.id,
+                    "| status:",
+                    err.response?.status,
+                    "| mensagem:",
+                    err.message
+                );
+
+                if (err.response?.data) {
+                    console.log(
+                        "RESPOSTA POPUP:",
+                        String(err.response.data)
+                            .replace(/\s+/g, " ")
+                            .slice(0, 1000)
+                    );
+                }
             }
         }
         return cupons;

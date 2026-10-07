@@ -537,7 +537,16 @@ async function obterExtrasPromotion(id, cachePromotions) {
             return [];
         }
 
-        const extras = extrairCupons(popup.data);
+        const textoPopup = popup.data
+            .replace(/<[^>]*>/g, " ")
+            .replace(/&nbsp;|&#160;|&#xA0;/gi, " ")
+            .replace(/\s+/g, " ");
+
+        const extras = extrairCupons(textoPopup);
+
+        if (!extras.some(x => x.tipo === "cupomCompleto")) {
+            extras.push(...extrairCupons(popup.data));
+        }
 
         const cuponsExtraidos = extras.filter(extra =>
             extra.tipo === "cupomCompleto" && extra.codigo

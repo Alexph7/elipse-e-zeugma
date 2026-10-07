@@ -28,7 +28,7 @@ const ARQUIVO_CUPONS =
     "./cupons-postados.json";
 
 const ARQUIVO_PROMOTIONS = "./promotion-aberturas.json";
-const LIMITE_ABERTURAS_PROMOTION = 10;
+const LIMITE_ABERTURAS_PROMOTION = 6;
 
 const STORES_FILE =
     "./stores.json";

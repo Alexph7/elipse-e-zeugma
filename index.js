@@ -377,55 +377,13 @@ function dentroHorarioOperacao() {
 
 // JANELA DE MONITORAMENTO
 function obterModoAtual() {
+    const minuto = Number(agoraSP().format("m"));
 
-    const agora = agoraSP();
-    const minuto = Number(
-        agora.format("m")
-    );
-
-    // HORA CHEIA 08:00:00 -> 08:00:59 polling 5 segundos
     if (minuto === 0) {
-
         return {
             ativo: true,
-            intervalo: 5,
-            modo: "TURBO"
-        };
-    }
-
-    // PRE AQUECIMENTO xx:58 e xx:59 polling 10 segundos
-    if (
-        minuto === 58 ||
-        minuto === 59
-    ) {
-
-        return {
-            ativo: true,
-            intervalo: 10,
-            modo: "PRE"
-        };
-    }
-
-    // POS AQUECIMENTO xx:01 e xx:02 polling 10 segundos
-    if (
-        minuto === 1 ||
-        minuto === 2
-    ) {
-
-        return {
-            ativo: true,
-            intervalo: 10,
-            modo: "POS"
-        };
-    }
-
-    // ALEATORIOS - 05 10 15 20 25... polling 5 segundos
-    if (minuto % 5 === 0) {
-
-        return {
-            ativo: true,
-            intervalo: 5,
-            modo: "ALEATORIO"
+            intervalo: 20,
+            modo: "HORA_CHEIA"
         };
     }
 
@@ -988,15 +946,8 @@ setInterval(async () => {
         const segundo = Number(
             agora.format("s")
         );
-        // ignora minutos já monitorados
-        if (
-            minuto === 0 ||
-            minuto === 1 ||
-            minuto === 2 ||
-            minuto === 58 ||
-            minuto === 59 ||
-            minuto % 5 === 0
-        ) {
+        // O minuto 00 é tratado pelo primeiro setInterval.
+        if (minuto === 0) {
             return;
         }
 

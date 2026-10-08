@@ -761,6 +761,7 @@ ${item.vendaTerceiros ? `vendedores terceiros (não Amazon)
     }
 }
 
+
 setInterval(async () => {
 
     try {
@@ -799,7 +800,7 @@ setInterval(async () => {
 
 }, 1000);
 
-setInterval(async () => {
+/*setInterval(async () => {
 
     try {
         // fora da janela operacional
@@ -846,6 +847,7 @@ setInterval(async () => {
     }
 
 }, 1000);
+*/
 
 bot.onText(/\/links/, async (msg) => {
 

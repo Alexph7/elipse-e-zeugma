@@ -596,8 +596,39 @@ async function analisarProduto(url, cachePromotions) {
         });
 
         let htmlBruto = response.data;
+
+        // DIAGNÓSTICO: origem do ID no HTML bruto
+        const idProcurado = "AGN56M6FKW33N";
+
+        if (typeof htmlBruto === "string") {
+
+            const posicao = htmlBruto.indexOf(idProcurado);
+
+            console.log("===== DIAGNÓSTICO HTML =====");
+            console.log("URL:", url);
+            console.log("STATUS:", response.status);
+            console.log("TAMANHO HTML:", htmlBruto.length);
+            console.log("ID ENCONTRADO:", posicao !== -1);
+
+            if (posicao !== -1) {
+
+                console.log("POSIÇÃO:", posicao);
+
+                console.log(
+                    "CONTEXTO ORIGINAL:",
+                    htmlBruto.slice(
+                        Math.max(0, posicao - 500),
+                        posicao + idProcurado.length + 500
+                    )
+                );
+            }
+
+            console.log("============================");
+        }
+
         const html =
             extrairBlocosPromocao(htmlBruto);
+
         htmlBruto = null;
 
         // extrai ids promotion

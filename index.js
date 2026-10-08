@@ -430,8 +430,7 @@ function extrairCupons(html) {
         });
     }
 
-    // Se não encontrou nenhum cupom completo,
-    // tenta o modelo sem valor mínimo em R$
+    // Se não encontrou nenhum cupom completo, tenta o modelo sem valor mínimo em R$
     if (!encontrados.some(x => x.tipo === "cupomCompleto")) {
 
         const regexCupomSemMinimo =

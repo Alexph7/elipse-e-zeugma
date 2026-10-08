@@ -1,0 +1,19 @@
+{
+  "A31FI8TWUQMWOP": {
+    "sucessos": 1,
+    "extras": [
+      {
+        "tipo": "cupomCompleto",
+        "porcentagem": "10",
+        "valorReais": null,
+        "minimo": "150",
+        "limite": "30",
+        "codigo": "APENASPRIME",
+        "vendaTerceiros": false
+      }
+    ],
+    "codigosPostados": [
+      "APENASPRIME"
+    ]
+  }
+}

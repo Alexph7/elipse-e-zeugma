@@ -571,7 +571,13 @@ async function analisarProduto(url, cachePromotions) {
                     }
                 }
             } catch (err) {
-                console.log("Erro popup:", promo.id);
+                console.log(
+                    "Erro popup:",
+                    promo.id,
+                    err.response?.status,
+                    err.code,
+                    err.message
+                );
             }
         }
         return cupons;

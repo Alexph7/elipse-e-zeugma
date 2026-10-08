@@ -430,18 +430,30 @@ function extrairCupons(html) {
     const encontrados = [];
     const vendaTerceiros =
         /produtos vendidos por vendedores terceiros/i.test(html);
-    const regexPromotion =
-        /promotion\/details\/popup\/([A-Z0-9]+)/gi;
-    let promotionMatch;
+    const regexPromotions = [
+        /promotion\/details\/popup\/([A-Z0-9]+)/gi,
+        /amzn1\.promotion\.([A-Z0-9]+)/gi,
+        /promotionId=([A-Z0-9]+)/gi
+    ];
 
-    while (
-        (promotionMatch = regexPromotion.exec(html)) !== null
-    ) {
+    const idsEncontrados = new Set();
+
+    for (const regex of regexPromotions) {
+
+        let match;
+
+        while ((match = regex.exec(html)) !== null) {
+            idsEncontrados.add(match[1]);
+        }
+    }
+
+    for (const id of idsEncontrados) {
 
         encontrados.push({
             tipo: "promotion",
-            id: promotionMatch[1]
+            id
         });
+
     }
 
     // TERMOS COMPLETOS
@@ -626,8 +638,7 @@ async function analisarProduto(url, cachePromotions) {
             console.log("============================");
         }
 
-        const html =
-            extrairBlocosPromocao(htmlBruto);
+        const html = htmlBruto;
 
         htmlBruto = null;
 

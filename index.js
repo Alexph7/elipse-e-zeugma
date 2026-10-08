@@ -7,7 +7,6 @@ dns.lookup("api.telegram.org", { all: true }, (err, addresses) => {
 
 require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
-const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
@@ -436,25 +435,20 @@ async function analisarProduto(url, cachePromotions) {
 
     try {
 
-        const response = await axios.get(url, {
-
-            httpAgent,
-            httpsAgent,
-            timeout: REQUEST_TIMEOUT,
+        const response = await fetch(url, {
             headers: {
-
-                "user-agent":
-                    "Mozilla/5.0",
-
-                "accept-language":
-                    "pt-BR,pt;q=0.9",
-
-                "accept-encoding":
-                    "gzip, deflate, br"
-            }
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+                "Accept-Language": "pt-BR,pt;q=0.9"
+            },
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT)
         });
 
-        let htmlBruto = response.data;
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        let htmlBruto = await response.text();
+
         const html =
             extrairBlocosPromocao(htmlBruto);
         htmlBruto = null;
@@ -491,46 +485,39 @@ async function analisarProduto(url, cachePromotions) {
 
                 if (extras === undefined) {
 
-                    const popup =
-                        await axios.get(
+                    const popup = await fetch(
+                        `https://www.amazon.com.br/promotion/details/popup/${promo.id}`,
+                        {
+                            headers: {
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+                                "Accept-Language": "pt-BR,pt;q=0.9"
+                            },
+                            signal: AbortSignal.timeout(REQUEST_TIMEOUT)
+                        }
+                    );
 
-                            `https://www.amazon.com.br/promotion/details/popup/${promo.id}`,
+                    if (!popup.ok) {
+                        throw new Error(`HTTP ${popup.status}`);
+                    }
 
-                            {
-                                httpAgent,
-                                httpsAgent,
-                                timeout: REQUEST_TIMEOUT,
-                                headers: {
-
-                                    "user-agent":
-                                        "Mozilla/5.0",
-
-                                    "accept-language":
-                                        "pt-BR,pt;q=0.9",
-
-                                    "accept-encoding":
-                                        "gzip, deflate, br"
-                                }
-                            }
-                        );
-
+                    const popupHtml = await popup.text();
                     console.log("POPUP:", promo.id);
                     console.log(
-                        popup.data
+                        popupHtml
                             .replace(/\s+/g, " ")
                             .slice(0, 5000)
                     );
 
                     console.log("PROMO:", promo.id);
 
-                    const resultadoRegex = popup.data.match(
+                    const resultadoRegex = popupHtml.match(
                         /Ganhe[\s\S]{0,500}Cupom[\s\S]{0,200}/i
                     );
 
                     console.log("TRECHO:");
                     console.log(resultadoRegex ? resultadoRegex[0] : "NÃO ENCONTROU");
 
-                    extras = extrairCupons(popup.data);
+                    extras = extrairCupons(popupHtml);
 
                     console.log("================================");
                     console.log("PROMO:", promo.id);
@@ -540,7 +527,7 @@ async function analisarProduto(url, cachePromotions) {
 
                     if (promo.id === "A18BVK047WQ0HR") {
                         console.log(
-                            popup.data.match(/<groupClaimCode>(.*?)<\/groupClaimCode>/i)
+                            popupHtml.match(/<groupClaimCode>(.*?)<\/groupClaimCode>/i)
                         );
                     }
 

@@ -7,6 +7,7 @@ dns.lookup("api.telegram.org", { all: true }, (err, addresses) => {
 
 require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
+const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
@@ -299,43 +300,56 @@ function dentroHorarioOperacao() {
     );
 }
 
+// JANELA DE MONITORAMENTO
 function obterModoAtual() {
 
     const agora = agoraSP();
-    const minuto = Number(agora.format("m"));
+    const minuto = Number(
+        agora.format("m")
+    );
 
-    // HORA CHEIA: segundos 00 e 10
+    // HORA CHEIA 08:00:00 -> 08:00:59 polling 5 segundos
     if (minuto === 0) {
+
         return {
             ativo: true,
-            segundos: [0, 10],
+            intervalo: 5,
             modo: "TURBO"
         };
     }
 
-    // PRE: minutos 58 e 59, somente segundo 00
-    if (minuto === 58 || minuto === 59) {
+    // PRE AQUECIMENTO xx:58 e xx:59 polling 10 segundos
+    if (
+        minuto === 58 ||
+        minuto === 59
+    ) {
+
         return {
             ativo: true,
-            segundos: [0],
+            intervalo: 10,
             modo: "PRE"
         };
     }
 
-    // POS: minutos 01 e 02, somente segundo 00
-    if (minuto === 1 || minuto === 2) {
+    // POS AQUECIMENTO xx:01 e xx:02 polling 10 segundos
+    if (
+        minuto === 1 ||
+        minuto === 2
+    ) {
+
         return {
             ativo: true,
-            segundos: [0],
+            intervalo: 10,
             modo: "POS"
         };
     }
 
-    // ALEATORIOS: minutos 05, 10, 15... segundos 00 e 30
+    // ALEATORIOS - 05 10 15 20 25... polling 5 segundos
     if (minuto % 5 === 0) {
+
         return {
             ativo: true,
-            segundos: [0, 30],
+            intervalo: 5,
             modo: "ALEATORIO"
         };
     }
@@ -422,20 +436,25 @@ async function analisarProduto(url, cachePromotions) {
 
     try {
 
-        const response = await fetch(url, {
+        const response = await axios.get(url, {
+
+            httpAgent,
+            httpsAgent,
+            timeout: REQUEST_TIMEOUT,
             headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-                "Accept-Language": "pt-BR,pt;q=0.9"
-            },
-            signal: AbortSignal.timeout(REQUEST_TIMEOUT)
+
+                "user-agent":
+                    "Mozilla/5.0",
+
+                "accept-language":
+                    "pt-BR,pt;q=0.9",
+
+                "accept-encoding":
+                    "gzip, deflate, br"
+            }
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-
-        let htmlBruto = await response.text();
-
+        let htmlBruto = response.data;
         const html =
             extrairBlocosPromocao(htmlBruto);
         htmlBruto = null;
@@ -460,9 +479,6 @@ async function analisarProduto(url, cachePromotions) {
         // abre popup termos
         for (const promo of promotions) {
 
-            if (promo.id === "AGN56M6FKW33N") {
-                continue;
-            }
 
             if (promotionsVistas.has(promo.id)) {
                 continue;
@@ -475,39 +491,46 @@ async function analisarProduto(url, cachePromotions) {
 
                 if (extras === undefined) {
 
-                    const popup = await fetch(
-                        `https://www.amazon.com.br/promotion/details/popup/${promo.id}`,
-                        {
-                            headers: {
-                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-                                "Accept-Language": "pt-BR,pt;q=0.9"
-                            },
-                            signal: AbortSignal.timeout(REQUEST_TIMEOUT)
-                        }
-                    );
+                    const popup =
+                        await axios.get(
 
-                    if (!popup.ok) {
-                        throw new Error(`HTTP ${popup.status}`);
-                    }
+                            `https://www.amazon.com.br/promotion/details/popup/${promo.id}`,
 
-                    const popupHtml = await popup.text();
+                            {
+                                httpAgent,
+                                httpsAgent,
+                                timeout: REQUEST_TIMEOUT,
+                                headers: {
+
+                                    "user-agent":
+                                        "Mozilla/5.0",
+
+                                    "accept-language":
+                                        "pt-BR,pt;q=0.9",
+
+                                    "accept-encoding":
+                                        "gzip, deflate, br"
+                                }
+                            }
+                        );
+
                     console.log("POPUP:", promo.id);
                     console.log(
-                        popupHtml
+                        popup.data
                             .replace(/\s+/g, " ")
                             .slice(0, 5000)
                     );
 
                     console.log("PROMO:", promo.id);
 
-                    const resultadoRegex = popupHtml.match(
+                    const resultadoRegex = popup.data.match(
                         /Ganhe[\s\S]{0,500}Cupom[\s\S]{0,200}/i
                     );
 
                     console.log("TRECHO:");
                     console.log(resultadoRegex ? resultadoRegex[0] : "NÃO ENCONTROU");
 
-                    extras = extrairCupons(popupHtml);
+                    extras = extrairCupons(popup.data);
 
                     console.log("================================");
                     console.log("PROMO:", promo.id);
@@ -517,7 +540,7 @@ async function analisarProduto(url, cachePromotions) {
 
                     if (promo.id === "A18BVK047WQ0HR") {
                         console.log(
-                            popupHtml.match(/<groupClaimCode>(.*?)<\/groupClaimCode>/i)
+                            popup.data.match(/<groupClaimCode>(.*?)<\/groupClaimCode>/i)
                         );
                     }
 
@@ -548,13 +571,7 @@ async function analisarProduto(url, cachePromotions) {
                     }
                 }
             } catch (err) {
-                console.log(
-                    "Erro popup:",
-                    promo.id,
-                    err.response?.status,
-                    err.code,
-                    err.message
-                );
+                console.log("Erro popup:", promo.id);
             }
         }
         return cupons;
@@ -764,7 +781,6 @@ ${item.vendaTerceiros ? `vendedores terceiros (não Amazon)
     }
 }
 
-
 setInterval(async () => {
 
     try {
@@ -785,7 +801,10 @@ setInterval(async () => {
             agora.format("s")
         );
 
-        if (!config.segundos.includes(segundo)) {
+        // respeita polling
+        if (
+            segundo % config.intervalo !== 0
+        ) {
             return;
         }
 
@@ -803,7 +822,7 @@ setInterval(async () => {
 
 }, 1000);
 
-/*setInterval(async () => {
+setInterval(async () => {
 
     try {
         // fora da janela operacional
@@ -832,8 +851,11 @@ setInterval(async () => {
             return;
         }
 
-        // executa somente no segundo 00
-        if (segundo !== 0) {
+        // executa apenas :00 e :10
+        if (
+            segundo !== 0 &&
+            segundo !== 10
+        ) {
             return;
         }
 
@@ -850,7 +872,6 @@ setInterval(async () => {
     }
 
 }, 1000);
-*/
 
 bot.onText(/\/links/, async (msg) => {
 
@@ -925,22 +946,19 @@ bot.on("message", async (msg) => {
 
 🛰 PRÉ AQUECIMENTO
 58 e 59
-• Segundo 00
+• 10 segundos
 
 ⚡ HORA CHEIA
 00
-• Segundos 00 e 10
+• 5 segundos
 
 🛰 PÓS AQUECIMENTO
 01 e 02
-• Segundo 00
+• 10 segundos
 
 🎲 ALEATÓRIOS
 05 10 15 20...
-• Segundos 00 e 30
-
-📡 DEMAIS MINUTOS
-• Segundo 00
+• 5 segundos
 
 📡 Sistema armado.`
     );

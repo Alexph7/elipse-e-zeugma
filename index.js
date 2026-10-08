@@ -304,52 +304,40 @@ function dentroHorarioOperacao() {
 function obterModoAtual() {
 
     const agora = agoraSP();
-    const minuto = Number(
-        agora.format("m")
-    );
+    const minuto = Number(agora.format("m"));
 
-    // HORA CHEIA 08:00:00 -> 08:00:59 polling 5 segundos
+    // HORA CHEIA: a cada 15 segundos
     if (minuto === 0) {
-
         return {
             ativo: true,
-            intervalo: 5,
+            intervalo: 15,
             modo: "TURBO"
         };
     }
 
-    // PRE AQUECIMENTO xx:58 e xx:59 polling 10 segundos
-    if (
-        minuto === 58 ||
-        minuto === 59
-    ) {
-
+    // PRE: minutos 58 e 59, a cada 30 segundos
+    if (minuto === 58 || minuto === 59) {
         return {
             ativo: true,
-            intervalo: 10,
+            intervalo: 30,
             modo: "PRE"
         };
     }
 
-    // POS AQUECIMENTO xx:01 e xx:02 polling 10 segundos
-    if (
-        minuto === 1 ||
-        minuto === 2
-    ) {
-
+    // POS: minutos 01 e 02, a cada 30 segundos
+    if (minuto === 1 || minuto === 2) {
         return {
             ativo: true,
-            intervalo: 10,
+            intervalo: 30,
             modo: "POS"
         };
     }
 
-    // ALEATORIOS - 05 10 15 20 25... polling 5 segundos
+    // ALEATORIOS: minutos 05, 10, 15..., a cada 20 segundos
     if (minuto % 5 === 0) {
-
         return {
             ativo: true,
-            intervalo: 5,
+            intervalo: 20,
             modo: "ALEATORIO"
         };
     }
@@ -852,10 +840,7 @@ setInterval(async () => {
         }
 
         // executa apenas :00 e :10
-        if (
-            segundo !== 0 &&
-            segundo !== 10
-        ) {
+        if (segundo !== 0) {
             return;
         }
 

@@ -299,56 +299,43 @@ function dentroHorarioOperacao() {
     );
 }
 
-// JANELA DE MONITORAMENTO
 function obterModoAtual() {
 
     const agora = agoraSP();
-    const minuto = Number(
-        agora.format("m")
-    );
+    const minuto = Number(agora.format("m"));
 
-    // HORA CHEIA 08:00:00 -> 08:00:59 polling 5 segundos
+    // HORA CHEIA: segundos 00 e 10
     if (minuto === 0) {
-
         return {
             ativo: true,
-            intervalo: 5,
+            segundos: [0, 10],
             modo: "TURBO"
         };
     }
 
-    // PRE AQUECIMENTO xx:58 e xx:59 polling 10 segundos
-    if (
-        minuto === 58 ||
-        minuto === 59
-    ) {
-
+    // PRE: minutos 58 e 59, somente segundo 00
+    if (minuto === 58 || minuto === 59) {
         return {
             ativo: true,
-            intervalo: 10,
+            segundos: [0],
             modo: "PRE"
         };
     }
 
-    // POS AQUECIMENTO xx:01 e xx:02 polling 10 segundos
-    if (
-        minuto === 1 ||
-        minuto === 2
-    ) {
-
+    // POS: minutos 01 e 02, somente segundo 00
+    if (minuto === 1 || minuto === 2) {
         return {
             ativo: true,
-            intervalo: 10,
+            segundos: [0],
             modo: "POS"
         };
     }
 
-    // ALEATORIOS - 05 10 15 20 25... polling 5 segundos
+    // ALEATORIOS: minutos 05, 10, 15... segundos 00 e 30
     if (minuto % 5 === 0) {
-
         return {
             ativo: true,
-            intervalo: 5,
+            segundos: [0, 30],
             modo: "ALEATORIO"
         };
     }
@@ -794,10 +781,7 @@ setInterval(async () => {
             agora.format("s")
         );
 
-        // respeita polling
-        if (
-            segundo % config.intervalo !== 0
-        ) {
+        if (!config.segundos.includes(segundo)) {
             return;
         }
 
@@ -844,11 +828,8 @@ setInterval(async () => {
             return;
         }
 
-        // executa apenas :00 e :10
-        if (
-            segundo !== 0 &&
-            segundo !== 10
-        ) {
+        // executa somente no segundo 00
+        if (segundo !== 0) {
             return;
         }
 
@@ -939,19 +920,22 @@ bot.on("message", async (msg) => {
 
 🛰 PRÉ AQUECIMENTO
 58 e 59
-• 10 segundos
+• Segundo 00
 
 ⚡ HORA CHEIA
 00
-• 5 segundos
+• Segundos 00 e 10
 
 🛰 PÓS AQUECIMENTO
 01 e 02
-• 10 segundos
+• Segundo 00
 
 🎲 ALEATÓRIOS
 05 10 15 20...
-• 5 segundos
+• Segundos 00 e 30
+
+📡 DEMAIS MINUTOS
+• Segundo 00
 
 📡 Sistema armado.`
     );

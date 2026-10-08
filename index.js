@@ -383,38 +383,38 @@ function obterModoAtual() {
     const agora = agoraSP();
     const minuto = Number(agora.format("m"));
 
-    // HORA CHEIA: a cada 15 segundos
+    // HORA CHEIA: a cada 5 segundos
     if (minuto === 0) {
         return {
             ativo: true,
-            intervalo: 15,
+            intervalo: 5,
             modo: "TURBO"
         };
     }
 
-    // PRE: minutos 58 e 59, a cada 30 segundos
+    // PRE: minutos 58 e 59, a cada 10 segundos
     if (minuto === 58 || minuto === 59) {
         return {
             ativo: true,
-            intervalo: 30,
+            intervalo: 10,
             modo: "PRE"
         };
     }
 
-    // POS: minutos 01 e 02, a cada 30 segundos
+    // POS: minutos 01 e 02, a cada 10 segundos
     if (minuto === 1 || minuto === 2) {
         return {
             ativo: true,
-            intervalo: 30,
+            intervalo: 10,
             modo: "POS"
         };
     }
 
-    // ALEATORIOS: minutos 05, 10, 15..., a cada 20 segundos
+    // ALEATORIOS: minutos 05, 10, 15..., a cada 5 segundos
     if (minuto % 5 === 0) {
         return {
             ativo: true,
-            intervalo: 20,
+            intervalo: 5,
             modo: "ALEATORIO"
         };
     }
@@ -928,7 +928,10 @@ setInterval(async () => {
         }
 
         // executa apenas :00 e :10
-        if (segundo !== 0) {
+        if (
+            segundo !== 0 &&
+            segundo !== 10
+        ) {
             return;
         }
 

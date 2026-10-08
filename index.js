@@ -460,6 +460,9 @@ async function analisarProduto(url, cachePromotions) {
         // abre popup termos
         for (const promo of promotions) {
 
+            if (promo.id === "AGN56M6FKW33N") {
+                continue;
+            }
 
             if (promotionsVistas.has(promo.id)) {
                 continue;

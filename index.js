@@ -750,7 +750,7 @@ async function monitorar(execucaoNome) {
 
             cuponsPostados.set(
                 codigo,
-                true
+                Date.now()
             );
 
             cuponsDesaparecidos.set(
@@ -1039,66 +1039,21 @@ bot.on("message", async (msg) => {
 
 setInterval(() => {
 
-    console.log(
-        "cuponsPostados:",
-        [...cuponsPostados.keys()]
-    );
+    const agora = Date.now();
+    const VINTE_QUATRO_HORAS = 24 * 60 * 60 * 1000;
 
-    if (!Object.keys(ultimoContadorGlobal).length) {
+    for (const [codigo, registradoEm] of cuponsPostados) {
 
-        console.log(
-            "SAIU POR CONTADOR VAZIO"
-        );
-        return;
-    }
-
-    for (const codigo of cuponsPostados.keys()) {
-
-        const total =
-            ultimoContadorGlobal[codigo] || 0;
-
-        console.log(
-            "CUPOM:",
-            codigo,
-            "TOTAL:",
-            total
-        );
-
-        if (total > 0) {
-
-            console.log(
-                "ZEROU DESAPARECIMENTO"
-            );
-
-            cuponsDesaparecidos.set(
-                codigo,
-                0
-            );
-
+        if (
+            typeof registradoEm !== "number" ||
+            registradoEm <= 0
+        ) {
             continue;
         }
 
-        const ciclos =
-            (cuponsDesaparecidos.get(codigo) || 0) + 1;
+        if (agora - registradoEm >= VINTE_QUATRO_HORAS) {
 
-        console.log(
-            "CICLOS:",
-            ciclos
-        );
-
-        cuponsDesaparecidos.set(
-            codigo,
-            ciclos
-        );
-
-        if (
-            ciclos >= CICLOS_DESAPARECIMENTO
-        ) {
-
-            console.log(
-                "REMOVENDO:",
-                codigo
-            );
+            console.log("REMOVENDO CUPOM APÓS 24H:", codigo);
 
             cuponsPostados.delete(codigo);
             limparContagemDoCupom(codigo);

@@ -27,6 +27,9 @@ const ARQUIVO_SENTINELAS = "./sentinelas.json";
 const ARQUIVO_CUPONS =
     "./cupons-postados.json";
 
+const ARQUIVO_PROMOTIONS = "./promotion-aberturas.json";
+const LIMITE_ABERTURAS_PROMOTION = 2;
+
 const STORES_FILE =
     "./stores.json";
 
@@ -75,6 +78,7 @@ let ultimoContadorGlobal = {};
 // codigo -> timestamp
 const cuponsPostados = new Map();
 const cuponsDesaparecidos = new Map();
+const historicoPromotions = new Map();
 const CICLOS_DESAPARECIMENTO = 3;
 
 function agoraSP() {
@@ -213,6 +217,79 @@ function carregarCuponsPostados() {
     }
 }
 
+function salvarHistoricoPromotions() {
+    fs.writeFileSync(
+        ARQUIVO_PROMOTIONS,
+        JSON.stringify(Object.fromEntries(historicoPromotions), null, 2)
+    );
+}
+
+function carregarHistoricoPromotions() {
+    if (!fs.existsSync(ARQUIVO_PROMOTIONS)) return;
+
+    try {
+        const dados = JSON.parse(
+            fs.readFileSync(ARQUIVO_PROMOTIONS, "utf8")
+        );
+
+        for (const [id, registro] of Object.entries(dados)) {
+            if (!registro || !Array.isArray(registro.extras)) continue;
+
+            const codigosPostados = Array.isArray(registro.codigosPostados)
+                ? registro.codigosPostados
+                : [];
+
+            if (codigosPostados.some(codigo => !cuponsPostados.has(codigo))) {
+                continue;
+            }
+
+            historicoPromotions.set(id, {
+                sucessos: Math.min(
+                    LIMITE_ABERTURAS_PROMOTION,
+                    Math.max(0, Number(registro.sucessos) || 0)
+                ),
+                extras: registro.extras,
+                codigosPostados
+            });
+        }
+    } catch (err) {
+        console.log("Erro ao carregar contagem dos popups:", err.message);
+    }
+}
+
+function marcarPromotionPostada(codigo) {
+    let alterou = false;
+
+    for (const registro of historicoPromotions.values()) {
+        if (
+            registro.extras.some(extra => extra.codigo === codigo) &&
+            !registro.codigosPostados.includes(codigo)
+        ) {
+            registro.codigosPostados.push(codigo);
+            alterou = true;
+        }
+    }
+
+    if (alterou) salvarHistoricoPromotions();
+}
+
+function limparContagemDoCupom(codigo) {
+    let alterou = false;
+
+    for (const [id, registro] of historicoPromotions) {
+        if (
+            registro.extras.some(extra => extra.codigo === codigo) ||
+            registro.codigosPostados.includes(codigo)
+        ) {
+            historicoPromotions.delete(id);
+            alterou = true;
+            console.log("Contagem reiniciada para promotion:", id);
+        }
+    }
+
+    if (alterou) salvarHistoricoPromotions();
+}
+
 function carregarStores() {
 
     if (!fs.existsSync(STORES_FILE)) {
@@ -304,52 +381,30 @@ function dentroHorarioOperacao() {
 function obterModoAtual() {
 
     const agora = agoraSP();
-    const minuto = Number(
-        agora.format("m")
-    );
+    const minuto = Number(agora.format("m"));
+    const segundo = Number(agora.format("s"));
 
-    // HORA CHEIA 08:00:00 -> 08:00:59 polling 5 segundos
+    // TURBO: minuto 00, segundos 00 e 10
     if (minuto === 0) {
-
         return {
-            ativo: true,
-            intervalo: 5,
+            ativo: segundo === 0 || segundo === 10,
             modo: "TURBO"
         };
     }
 
-    // PRE AQUECIMENTO xx:58 e xx:59 polling 10 segundos
-    if (
-        minuto === 58 ||
-        minuto === 59
-    ) {
-
+    // POS: minuto 01, somente segundo 00
+    if (minuto === 1) {
         return {
-            ativo: true,
-            intervalo: 10,
-            modo: "PRE"
-        };
-    }
-
-    // POS AQUECIMENTO xx:01 e xx:02 polling 10 segundos
-    if (
-        minuto === 1 ||
-        minuto === 2
-    ) {
-
-        return {
-            ativo: true,
-            intervalo: 10,
+            ativo: segundo === 0,
             modo: "POS"
         };
     }
 
-    // ALEATORIOS - 05 10 15 20 25... polling 5 segundos
+    // ALEATÓRIOS: minutos 05, 10, 15...
+    // somente segundos 00 e 10
     if (minuto % 5 === 0) {
-
         return {
-            ativo: true,
-            intervalo: 5,
+            ativo: segundo === 0 || segundo === 10,
             modo: "ALEATORIO"
         };
     }
@@ -365,18 +420,30 @@ function extrairCupons(html) {
     const encontrados = [];
     const vendaTerceiros =
         /produtos vendidos por vendedores terceiros/i.test(html);
-    const regexPromotion =
-        /promotion\/details\/popup\/([A-Z0-9]+)/gi;
-    let promotionMatch;
+    const regexPromotions = [
+        /promotion\/details\/popup\/([A-Z0-9]+)/gi,
+        /amzn1\.promotion\.([A-Z0-9]+)/gi,
+        /promotionId=([A-Z0-9]+)/gi
+    ];
 
-    while (
-        (promotionMatch = regexPromotion.exec(html)) !== null
-    ) {
+    const idsEncontrados = new Set();
+
+    for (const regex of regexPromotions) {
+
+        let match;
+
+        while ((match = regex.exec(html)) !== null) {
+            idsEncontrados.add(match[1]);
+        }
+    }
+
+    for (const id of idsEncontrados) {
 
         encontrados.push({
             tipo: "promotion",
-            id: promotionMatch[1]
+            id
         });
+
     }
 
     // TERMOS COMPLETOS
@@ -432,6 +499,82 @@ function extrairCupons(html) {
     return encontrados;
 }
 
+async function obterExtrasPromotion(id, cachePromotions) {
+    if (cachePromotions.has(id)) {
+        return cachePromotions.get(id);
+    }
+
+    const tarefa = (async () => {
+        const registro = historicoPromotions.get(id);
+
+        if (registro?.sucessos >= LIMITE_ABERTURAS_PROMOTION) {
+            return registro.extras;
+        }
+
+        const popup = await axios.get(
+            `https://www.amazon.com.br/promotion/details/popup/${id}`,
+            {
+                httpAgent,
+                httpsAgent,
+                timeout: REQUEST_TIMEOUT,
+                headers: {
+                    "user-agent": "Mozilla/5.0",
+                    "accept-language": "pt-BR,pt;q=0.9",
+                    "accept-encoding": "gzip, deflate, br"
+                }
+            }
+        );
+
+        if (popup.status !== 200 || typeof popup.data !== "string") {
+            return [];
+        }
+
+        const popupValido =
+            popup.data.includes("promo_tnc_popup_container_") &&
+            popup.data.includes("tncSectionContentMap") &&
+            !/captcha|enter the characters|digite os caracteres/i.test(popup.data);
+
+        if (!popupValido) {
+            return [];
+        }
+
+        const textoPopup = popup.data
+            .replace(/<[^>]*>/g, " ")
+            .replace(/&nbsp;|&#160;|&#xA0;/gi, " ")
+            .replace(/\s+/g, " ");
+
+        const extras = extrairCupons(textoPopup);
+
+        if (!extras.some(x => x.tipo === "cupomCompleto")) {
+            extras.push(...extrairCupons(popup.data));
+        }
+
+        historicoPromotions.set(id, {
+            sucessos: Math.min(
+                LIMITE_ABERTURAS_PROMOTION,
+                (registro?.sucessos || 0) + 1
+            ),
+            extras,
+            codigosPostados: registro?.codigosPostados || []
+        });
+
+        salvarHistoricoPromotions();
+
+        console.log(
+            "Popup válido:",
+            id,
+            `${historicoPromotions.get(id).sucessos}/${LIMITE_ABERTURAS_PROMOTION}`,
+            "Cupons:",
+            extras.filter(x => x.tipo === "cupomCompleto").length
+        );
+
+        return extras;
+    })();
+
+    cachePromotions.set(id, tarefa);
+    return tarefa;
+}
+
 async function analisarProduto(url, cachePromotions) {
 
     try {
@@ -455,8 +598,38 @@ async function analisarProduto(url, cachePromotions) {
         });
 
         let htmlBruto = response.data;
-        const html =
-            extrairBlocosPromocao(htmlBruto);
+
+        // DIAGNÓSTICO: origem do ID no HTML bruto
+        const idProcurado = "AGN56M6FKW33N";
+
+        if (typeof htmlBruto === "string") {
+
+            const posicao = htmlBruto.indexOf(idProcurado);
+
+            console.log("===== DIAGNÓSTICO HTML =====");
+            console.log("URL:", url);
+            console.log("STATUS:", response.status);
+            console.log("TAMANHO HTML:", htmlBruto.length);
+            console.log("ID ENCONTRADO:", posicao !== -1);
+
+            if (posicao !== -1) {
+
+                console.log("POSIÇÃO:", posicao);
+
+                console.log(
+                    "CONTEXTO ORIGINAL:",
+                    htmlBruto.slice(
+                        Math.max(0, posicao - 500),
+                        posicao + idProcurado.length + 500
+                    )
+                );
+            }
+
+            console.log("============================");
+        }
+
+        const html = htmlBruto;
+
         htmlBruto = null;
 
         // extrai ids promotion
@@ -487,77 +660,11 @@ async function analisarProduto(url, cachePromotions) {
             promotionsVistas.add(promo.id);
             try {
 
-                let extras = cachePromotions.get(promo.id);
+                const extras = await obterExtrasPromotion(
+                    promo.id,
+                    cachePromotions
+                );
 
-                if (extras === undefined) {
-
-                    const popup =
-                        await axios.get(
-
-                            `https://www.amazon.com.br/promotion/details/popup/${promo.id}`,
-
-                            {
-                                httpAgent,
-                                httpsAgent,
-                                timeout: REQUEST_TIMEOUT,
-                                headers: {
-
-                                    "user-agent":
-                                        "Mozilla/5.0",
-
-                                    "accept-language":
-                                        "pt-BR,pt;q=0.9",
-
-                                    "accept-encoding":
-                                        "gzip, deflate, br"
-                                }
-                            }
-                        );
-
-                    console.log("POPUP:", promo.id);
-                    console.log(
-                        popup.data
-                            .replace(/\s+/g, " ")
-                            .slice(0, 5000)
-                    );
-
-                    console.log("PROMO:", promo.id);
-
-                    const resultadoRegex = popup.data.match(
-                        /Ganhe[\s\S]{0,500}Cupom[\s\S]{0,200}/i
-                    );
-
-                    console.log("TRECHO:");
-                    console.log(resultadoRegex ? resultadoRegex[0] : "NÃO ENCONTROU");
-
-                    extras = extrairCupons(popup.data);
-
-                    console.log("================================");
-                    console.log("PROMO:", promo.id);
-                    console.log("EXTRAS:");
-                    console.log(JSON.stringify(extras, null, 2));
-                    console.log("================================");
-
-                    if (promo.id === "A18BVK047WQ0HR") {
-                        console.log(
-                            popup.data.match(/<groupClaimCode>(.*?)<\/groupClaimCode>/i)
-                        );
-                    }
-
-                    console.log("EXTRAS EXTRAIDOS:", promo.id);
-                    console.log(
-                        JSON.stringify(
-                            extras,
-                            null,
-                            2
-                        )
-                    );
-                    // salva no cache
-                    cachePromotions.set(
-                        promo.id,
-                        extras
-                    );
-                }
                 // mantém apenas cupons reais
                 for (const extra of extras) {
                     if (
@@ -675,7 +782,7 @@ async function monitorar(execucaoNome) {
 
             cuponsPostados.set(
                 codigo,
-                true
+                Date.now()
             );
 
             cuponsDesaparecidos.set(
@@ -684,6 +791,7 @@ async function monitorar(execucaoNome) {
             );
 
             salvarCuponsPostados();
+            marcarPromotionPostada(codigo);
 
             const item = detalhes[codigo];
 
@@ -789,22 +897,9 @@ setInterval(async () => {
             return;
         }
 
-        const config =
-            obterModoAtual();
+        const config = obterModoAtual();
 
         if (!config.ativo) {
-            return;
-        }
-
-        const agora = agoraSP();
-        const segundo = Number(
-            agora.format("s")
-        );
-
-        // respeita polling
-        if (
-            segundo % config.intervalo !== 0
-        ) {
             return;
         }
 
@@ -822,7 +917,7 @@ setInterval(async () => {
 
 }, 1000);
 
-setInterval(async () => {
+/*setInterval(async () => {
 
     try {
         // fora da janela operacional
@@ -871,7 +966,7 @@ setInterval(async () => {
         );
     }
 
-}, 1000);
+}, 1000);*/
 
 bot.onText(/\/links/, async (msg) => {
 
@@ -966,68 +1061,24 @@ bot.on("message", async (msg) => {
 
 setInterval(() => {
 
-    console.log(
-        "cuponsPostados:",
-        [...cuponsPostados.keys()]
-    );
+    const agora = Date.now();
+    const VINTE_QUATRO_HORAS = 24 * 60 * 60 * 1000;
 
-    if (!Object.keys(ultimoContadorGlobal).length) {
+    for (const [codigo, registradoEm] of cuponsPostados) {
 
-        console.log(
-            "SAIU POR CONTADOR VAZIO"
-        );
-        return;
-    }
-
-    for (const codigo of cuponsPostados.keys()) {
-
-        const total =
-            ultimoContadorGlobal[codigo] || 0;
-
-        console.log(
-            "CUPOM:",
-            codigo,
-            "TOTAL:",
-            total
-        );
-
-        if (total > 0) {
-
-            console.log(
-                "ZEROU DESAPARECIMENTO"
-            );
-
-            cuponsDesaparecidos.set(
-                codigo,
-                0
-            );
-
+        if (
+            typeof registradoEm !== "number" ||
+            registradoEm <= 0
+        ) {
             continue;
         }
 
-        const ciclos =
-            (cuponsDesaparecidos.get(codigo) || 0) + 1;
+        if (agora - registradoEm >= VINTE_QUATRO_HORAS) {
 
-        console.log(
-            "CICLOS:",
-            ciclos
-        );
-
-        cuponsDesaparecidos.set(
-            codigo,
-            ciclos
-        );
-
-        if (
-            ciclos >= CICLOS_DESAPARECIMENTO
-        ) {
-
-            console.log(
-                "REMOVENDO:",
-                codigo
-            );
+            console.log("REMOVENDO CUPOM APÓS 24H:", codigo);
 
             cuponsPostados.delete(codigo);
+            limparContagemDoCupom(codigo);
             cuponsDesaparecidos.delete(codigo);
             salvarCuponsPostados();
         }
@@ -1037,6 +1088,7 @@ setInterval(() => {
 
 sentinelas = carregarSentinelas();
 carregarCuponsPostados();
+carregarHistoricoPromotions();
 carregarStores();
 carregarAfiliados();
 

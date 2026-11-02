@@ -392,20 +392,19 @@ function obterModoAtual() {
         };
     }
 
-    // POS: minuto 01, somente segundo 00
+    // POS: minuto 01, segundos 00 e 10
     if (minuto === 1) {
         return {
-            ativo: segundo === 0,
+            ativo: segundo === 0 || segundo === 10,
             modo: "POS"
         };
     }
 
-    // ALEATÓRIOS: minutos 05, 10, 15...
-    // somente segundos 00 e 10
-    if (minuto % 5 === 0) {
+    // MEIA HORA: minuto 30, segundos 00 e 10
+    if (minuto === 30) {
         return {
             ativo: segundo === 0 || segundo === 10,
-            modo: "ALEATORIO"
+            modo: "MEIA-HORA"
         };
     }
 
